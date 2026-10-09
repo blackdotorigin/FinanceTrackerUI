@@ -79,9 +79,73 @@ function PasswordIcon({ visible }: { visible: boolean }) {
   );
 }
 
+function createPreviewCurve() {
+  const points = Array.from({ length: 7 }, (_, index) => ({
+    x: index * 60,
+    y: 24 + Math.round(Math.random() * 52),
+  }));
+  const segments = points.slice(0, -1).map((point, index) => {
+    const previous = points[Math.max(0, index - 1)];
+    const next = points[index + 1];
+    const afterNext = points[Math.min(points.length - 1, index + 2)];
+    const controlOne = {
+      x: point.x + (next.x - previous.x) / 6,
+      y: point.y + (next.y - previous.y) / 6,
+    };
+    const controlTwo = {
+      x: next.x - (afterNext.x - point.x) / 6,
+      y: next.y - (afterNext.y - point.y) / 6,
+    };
+    return `C${controlOne.x} ${controlOne.y} ${controlTwo.x} ${controlTwo.y} ${next.x} ${next.y}`;
+  });
+  const line = `M${points[0].x} ${points[0].y}${segments.join("")}`;
+  return { line, start: points[0] };
+}
+
+function createPreviewAmounts() {
+  const balanceCents = 450_000 + Math.floor(Math.random() * 2_050_000);
+  const spendingCents = 45_000 + Math.floor(Math.random() * 255_000);
+  const largestCategoryCents = Math.floor(spendingCents * (0.24 + Math.random() * 0.24));
+  const formatAmount = (cents: number) => ({
+    dollars: Math.floor(cents / 100).toLocaleString("en-US"),
+    cents: String(cents % 100).padStart(2, "0"),
+  });
+  return {
+    balance: formatAmount(balanceCents),
+    spending: formatAmount(spendingCents),
+    largestCategory: formatAmount(largestCategoryCents),
+  };
+}
+
 function MoneyIllustration() {
+  const [previewMode, setPreviewMode] = useState<"balance" | "spending">("balance");
+  const [previewAmounts] = useState(createPreviewAmounts);
+  const [chartCurves] = useState(() => ({
+    balance: createPreviewCurve(),
+    spending: createPreviewCurve(),
+  }));
+
+  function tiltCard(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    if (event.target instanceof Element && event.target.closest("button")) {
+      event.currentTarget.style.transform = "";
+      return;
+    }
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    event.currentTarget.style.transform =
+      `perspective(900px) rotateX(${(-y * 7).toFixed(2)}deg) rotateY(${(x * 8).toFixed(2)}deg) scale3d(1.015, 1.015, 1.015)`;
+  }
+
+  function resetCardTilt(event: React.PointerEvent<HTMLDivElement>) {
+    event.currentTarget.style.transform = "";
+  }
+
   return (
-    <div className="visual-panel" role="img" aria-label="A preview of your financial overview">
+    <section className="visual-panel" aria-label="Interactive finance preview">
       <div className="visual-orbit orbit-one" />
       <div className="visual-orbit orbit-two" />
       <Sparkle className="sparkle sparkle-one" />
@@ -92,62 +156,133 @@ function MoneyIllustration() {
         <p>Simple snapshots. Thoughtful progress. A calmer way to keep track.</p>
       </div>
 
-      <div className="overview-card">
-        <div className="overview-heading">
-          <div>
-            <span className="card-label">Total balance</span>
-            <strong>$12,840<span>.50</span></strong>
+      <div className="overview-card-float">
+        <div
+          className={`overview-card is-${previewMode}`}
+          onPointerLeave={resetCardTilt}
+          onPointerMove={tiltCard}
+        >
+          <div className="overview-heading">
+            <div>
+              <span className="card-label">{previewMode === "balance" ? "Total balance" : "Spent this month"}</span>
+              <strong>
+                ${previewMode === "balance" ? previewAmounts.balance.dollars : previewAmounts.spending.dollars}
+                <span>.{previewMode === "balance" ? previewAmounts.balance.cents : previewAmounts.spending.cents}</span>
+              </strong>
+            </div>
+            <span className="balance-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 17 9 12l3.5 3.5L20 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15 8h5v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
           </div>
-          <span className="balance-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 17 9 12l3.5 3.5L20 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M15 8h5v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <div className="preview-switch" role="group" aria-label="Preview chart">
+            <button
+              aria-pressed={previewMode === "balance"}
+              className={previewMode === "balance" ? "is-active" : ""}
+              onClick={() => setPreviewMode("balance")}
+              type="button"
+            >
+              Balance
+            </button>
+            <button
+              aria-pressed={previewMode === "spending"}
+              className={previewMode === "spending" ? "is-active" : ""}
+              onClick={() => setPreviewMode("spending")}
+              type="button"
+            >
+              Spending
+            </button>
+          </div>
+          <div className="chart" aria-hidden="true">
+            <div className="chart-gridline gridline-one" />
+            <div className="chart-gridline gridline-two" />
+            <div className="chart-gridline gridline-three" />
+            <svg viewBox="0 0 360 98" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#a8d7b5" stopOpacity=".35" />
+                  <stop offset="1" stopColor="#a8d7b5" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="chart-fill-spending" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#e6a18b" stopOpacity=".36" />
+                  <stop offset="1" stopColor="#e6a18b" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {(() => {
+                const curve = chartCurves[previewMode];
+                const area = `${curve.line}L360 98L0 98Z`;
+                return (
+                  <>
+                    <path
+                      className={`preview-chart-area is-${previewMode}`}
+                      d={area}
+                      fill={`url(#chart-fill${previewMode === "spending" ? "-spending" : ""})`}
+                    />
+                    <path
+                      className={`preview-chart-line is-${previewMode}`}
+                      d={curve.line}
+                      fill="none"
+                      strokeWidth="2.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <circle
+                      className="chart-static-pointer"
+                      cx={curve.start.x}
+                      cy={curve.start.y}
+                      r="4"
+                    />
+                    <g className="chart-motion-pointer">
+                      <circle className="chart-pointer-halo" r="8" />
+                      <circle className="chart-pointer-core" r="3.2" />
+                      <animateMotion
+                        key={previewMode}
+                        calcMode="linear"
+                        dur="6s"
+                        keyPoints="0;1;1;0;0"
+                        keyTimes="0;.44;.5;.94;1"
+                        repeatCount="indefinite"
+                      >
+                        <mpath href={`#preview-curve-${previewMode}`} />
+                      </animateMotion>
+                    </g>
+                    <path
+                      id={`preview-curve-${previewMode}`}
+                      d={curve.line}
+                      fill="none"
+                      stroke="none"
+                    />
+                  </>
+                );
+              })()}
             </svg>
-          </span>
-        </div>
-        <div className="chart" aria-hidden="true">
-          <div className="chart-gridline gridline-one" />
-          <div className="chart-gridline gridline-two" />
-          <div className="chart-gridline gridline-three" />
-          <svg viewBox="0 0 360 98" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#a8d7b5" stopOpacity=".35" />
-                <stop offset="1" stopColor="#a8d7b5" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0 76C17 73 20 61 39 65s25 10 41 1 21-23 39-17 18 23 35 18 25-27 42-25 20 19 37 14 25-28 43-22 18 17 35 10 24-25 39-22 25 7 50-13v89H0V76Z"
-              fill="url(#chart-fill)"
-            />
-            <path
-              d="M0 76C17 73 20 61 39 65s25 10 41 1 21-23 39-17 18 23 35 18 25-27 42-25 20 19 37 14 25-28 43-22 18 17 35 10 24-25 39-22 25 7 50-13"
-              fill="none"
-              stroke="#a8d7b5"
-              strokeWidth="2.5"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-          <span className="chart-point point-one" />
-          <span className="chart-point point-two" />
-        </div>
-        <div className="chart-labels">
-          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-        </div>
-        <div className="spending-row">
-          <span className="spending-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 7h16v12H4zM4 7l2-3h12l2 3M16 13h4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-              <circle cx="16" cy="13" r=".8" fill="currentColor" />
-            </svg>
-          </span>
-          <span className="spending-name">Everyday spending</span>
-          <span className="spending-amount">$248.00</span>
+          </div>
+          <div className="chart-labels">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div className="spending-row">
+            <span className="spending-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 7h16v12H4zM4 7l2-3h12l2 3M16 13h4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <circle cx="16" cy="13" r=".8" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="spending-name">{previewMode === "balance" ? "Everyday spending" : "Largest category"}</span>
+            <span className="spending-amount">
+              ${previewMode === "balance"
+                ? previewAmounts.spending.dollars
+                : previewAmounts.largestCategory.dollars}
+              .{previewMode === "balance"
+                ? previewAmounts.spending.cents
+                : previewAmounts.largestCategory.cents}
+            </span>
+          </div>
         </div>
       </div>
 
       <span className="visual-caption">A clearer view, one day at a time.</span>
-    </div>
+    </section>
   );
 }
 

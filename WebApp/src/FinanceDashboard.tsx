@@ -228,6 +228,25 @@ function formatDate(date: string) {
   }).format(parsed);
 }
 
+type ReportTab = "monthly" | "budgets" | "trends";
+
+const REPORT_COLORS = ["#5b8966", "#e4b866", "#84a9a0", "#cf8068", "#8c82aa", "#78a3c2", "#b7a17e"];
+
+function getMonthValue(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getMonthOffset(month: string, offset: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(year, monthNumber - 1 + offset, 1);
+  return getMonthValue(date);
+}
+
+function formatMonth(month: string, options: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" }) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, options).format(new Date(year, monthNumber - 1, 1));
+}
+
 function getTodayInputValue() {
   const today = new Date();
   const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -361,6 +380,14 @@ export default function FinanceDashboard({
   });
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [reportTab, setReportTab] = useState<ReportTab>("monthly");
+  const [reportMonth, setReportMonth] = useState(() => getMonthValue());
+  const [reportCategoryType, setReportCategoryType] = useState<TransactionType>("EXPENSE");
+  const [budgetLimits, setBudgetLimits] = useState<Record<string, string>>({});
+  const [budgetStorageReady, setBudgetStorageReady] = useState(false);
+  const [budgetStorageLoadError, setBudgetStorageLoadError] = useState("");
+  const [budgetStorageWriteError, setBudgetStorageWriteError] = useState("");
+  const budgetStorageKey = `financeflow-budgets-${initialUsername.toLowerCase()}`;
 
   useEffect(() => {
     tokenRef.current = accessToken;
@@ -369,6 +396,48 @@ export default function FinanceDashboard({
   useEffect(() => {
     window.localStorage.setItem("financeflow-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(budgetStorageKey);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (!isObject(parsed)) {
+          throw new Error("Saved budget limits were not in the expected format.");
+        }
+        const validBudgets: Record<string, string> = {};
+        Object.entries(parsed).forEach(([id, value]) => {
+          if (
+            typeof value === "string" &&
+            value.trim() !== "" &&
+            Number.isFinite(Number(value)) &&
+            Number(value) > 0
+          ) {
+            validBudgets[id] = value;
+          }
+        });
+        setBudgetLimits(validBudgets);
+      }
+    } catch (caught) {
+      setBudgetStorageLoadError(
+        caught instanceof Error ? caught.message : "Saved budgets could not be loaded.",
+      );
+    } finally {
+      setBudgetStorageReady(true);
+    }
+  }, [budgetStorageKey]);
+
+  useEffect(() => {
+    if (!budgetStorageReady) return;
+    try {
+      window.localStorage.setItem(budgetStorageKey, JSON.stringify(budgetLimits));
+      setBudgetStorageWriteError("");
+    } catch (caught) {
+      setBudgetStorageWriteError(
+        caught instanceof Error ? caught.message : "Budget changes could not be saved on this device.",
+      );
+    }
+  }, [budgetLimits, budgetStorageKey, budgetStorageReady]);
 
   useScrollZoom(loading, activeNav);
 
@@ -590,6 +659,92 @@ export default function FinanceDashboard({
       { income: 0, expenses: 0 },
     );
   }, [currency, transactions]);
+
+  const reportData = useMemo(() => {
+    const currencyTransactions = transactions.filter((transaction) => transaction.currency === currency);
+    const selectedMonthTransactions = currencyTransactions.filter((transaction) =>
+      transaction.transactionDate.startsWith(reportMonth),
+    );
+    const totalsFor = (items: Transaction[]) =>
+      items.reduce(
+        (result, transaction) => {
+          result[transaction.type] += transaction.amount;
+          return result;
+        },
+        { INCOME: 0, EXPENSE: 0 },
+      );
+    const monthTotals = totalsFor(selectedMonthTransactions);
+    const categories = selectedMonthTransactions.reduce<
+      { id: string; name: string; amount: number }[]
+    >((result, transaction) => {
+      if (transaction.type !== reportCategoryType) return result;
+      const id = transaction.category?.id || "uncategorized";
+      const name = transaction.category?.name || "Uncategorized";
+      const found = result.find((category) => category.id === id);
+      if (found) found.amount += transaction.amount;
+      else result.push({ id, name, amount: transaction.amount });
+      return result;
+    }, []).sort((first, second) => second.amount - first.amount);
+    const daysInReportMonth = new Date(
+      Number(reportMonth.slice(0, 4)),
+      Number(reportMonth.slice(5, 7)),
+      0,
+    ).getDate();
+    const weeklyTotals = Array.from({ length: Math.ceil(daysInReportMonth / 7) }, (_, index) => ({
+      label: `${index * 7 + 1}–${Math.min(index * 7 + 7, daysInReportMonth)}`,
+      income: 0,
+      expenses: 0,
+    }));
+    selectedMonthTransactions.forEach((transaction) => {
+      const date = new Date(`${transaction.transactionDate}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return;
+      const week = Math.min(4, Math.floor((date.getDate() - 1) / 7));
+      if (transaction.type === "INCOME") weeklyTotals[week].income += transaction.amount;
+      else weeklyTotals[week].expenses += transaction.amount;
+    });
+    const trendMonths = Array.from({ length: 6 }, (_, index) => getMonthOffset(reportMonth, index - 5));
+    const trends = trendMonths.map((month) => ({
+      month,
+      label: formatMonth(month, { month: "short" }),
+      ...totalsFor(currencyTransactions.filter((transaction) => transaction.transactionDate.startsWith(month))),
+    }));
+    const trendTotals = trends.reduce(
+      (result, month) => ({
+        income: result.income + month.INCOME,
+        expenses: result.expenses + month.EXPENSE,
+      }),
+      { income: 0, expenses: 0 },
+    );
+    return {
+      selectedMonthTransactions,
+      monthTotals,
+      categories,
+      weeklyTotals,
+      trends,
+      averageMonthlySpend: trendTotals.expenses / trends.length,
+      averageMonthlyIncome: trendTotals.income / trends.length,
+      expenseCategories: Array.from(
+        currencyTransactions.reduce<Map<string, { id: string; name: string; amount: number }>>(
+          (result, transaction) => {
+            if (transaction.type !== "EXPENSE") return result;
+            const id = transaction.category?.id || "uncategorized";
+            const name = transaction.category?.name || "Uncategorized";
+            const found = result.get(id);
+            if (found && transaction.transactionDate.startsWith(reportMonth)) found.amount += transaction.amount;
+            else if (!found) {
+              result.set(id, {
+                id,
+                name,
+                amount: transaction.transactionDate.startsWith(reportMonth) ? transaction.amount : 0,
+              });
+            }
+            return result;
+          },
+          new Map(),
+        ).values(),
+      ).sort((first, second) => second.amount - first.amount),
+    };
+  }, [currency, reportCategoryType, reportMonth, transactions]);
 
   const visibleTransactions = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -815,14 +970,13 @@ export default function FinanceDashboard({
             <Icon name="transactions" /><span>Transactions</span>
           </button>
           <button
-            aria-label="Monthly reports"
+            aria-label="Reports"
             aria-current={activeNav === "reports" ? "page" : undefined}
             className={`rail-nav-link ${activeNav === "reports" ? "is-active" : ""}`}
             onClick={() => navigateTo("reports")}
             type="button"
           >
-            <Icon name="reports" /><span>Monthly reports</span>
-            <span className="nav-coming-soon">Soon</span>
+            <Icon name="reports" /><span>Reports</span>
           </button>
           <button
             aria-label="Profile"
@@ -1043,23 +1197,321 @@ export default function FinanceDashboard({
             </section>
           ) : activeNav === "reports" ? (
             <section className="dashboard-subpage reports-page" aria-labelledby="reports-page-title">
-              <div className="subpage-heading" data-scroll-zoom>
-                <p className="eyebrow">A clearer view over time</p>
-                <h1 id="reports-page-title">Monthly reports</h1>
-                <p>Understand how your spending and income change from month to month.</p>
+              <div className="reports-heading-row" data-scroll-zoom>
+                <div className="subpage-heading">
+                  <p className="eyebrow">A clearer view over time</p>
+                  <h1 id="reports-page-title">Your money, in focus.</h1>
+                  <p>See where it goes, what comes in, and how your habits change.</p>
+                </div>
+                <div className="report-month-picker" aria-label="Report month">
+                  <button
+                    aria-label="Previous month"
+                    onClick={() => setReportMonth((month) => getMonthOffset(month, -1))}
+                    type="button"
+                  >
+                    ‹
+                  </button>
+                  <span>{formatMonth(reportMonth)}</span>
+                  <button
+                    aria-label="Next month"
+                    disabled={reportMonth >= getMonthValue()}
+                    onClick={() => setReportMonth((month) => getMonthOffset(month, 1))}
+                    type="button"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
-              <article className="reports-coming-card" data-scroll-zoom>
-                <span className="reports-illustration"><Icon name="reports" /></span>
-                <span className="reports-status">COMING SOON</span>
-                <h2>Your monthly story, at a glance.</h2>
-                <p>
-                  Monthly summaries and spending insights are on their way. For now,
-                  you can explore every entry in your transactions.
-                </p>
-                <button className="dashboard-primary-button" onClick={() => navigateTo("transactions")} type="button">
-                  Browse transactions <Icon name="arrow" />
-                </button>
-              </article>
+
+              <div className="report-tabs" role="tablist" aria-label="Report sections">
+                {([
+                  ["monthly", "Monthly"],
+                  ["budgets", "Budgets"],
+                  ["trends", "Trends"],
+                ] as const).map(([tab, label]) => (
+                  <button
+                    aria-selected={reportTab === tab}
+                    className={reportTab === tab ? "is-active" : ""}
+                    id={`report-tab-${tab}`}
+                    key={tab}
+                    onClick={() => setReportTab(tab)}
+                    role="tab"
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {reportTab === "monthly" ? (
+                <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-monthly">
+                  <div className="report-metrics">
+                    <article className="report-metric-card report-metric-expense">
+                      <span><Icon name="expense" /> Spent</span>
+                      <strong>{formatMoney(reportData.monthTotals.EXPENSE, currency)}</strong>
+                      <small>Out across {reportData.selectedMonthTransactions.filter((item) => item.type === "EXPENSE").length} transactions</small>
+                    </article>
+                    <article className="report-metric-card report-metric-income">
+                      <span><Icon name="income" /> Income</span>
+                      <strong>{formatMoney(reportData.monthTotals.INCOME, currency)}</strong>
+                      <small>In across {reportData.selectedMonthTransactions.filter((item) => item.type === "INCOME").length} transactions</small>
+                    </article>
+                    <article className="report-metric-card report-metric-net">
+                      <span><Icon name="wallet" /> Net</span>
+                      <strong>{formatMoney(reportData.monthTotals.INCOME - reportData.monthTotals.EXPENSE, currency)}</strong>
+                      <small>Income minus spending</small>
+                    </article>
+                  </div>
+
+                  <div className="report-chart-grid">
+                    <article className="report-card report-pie-card">
+                      <div className="report-card-heading">
+                        <div>
+                          <p className="eyebrow">The breakdown</p>
+                          <h2>By category</h2>
+                        </div>
+                        <div className="report-segment-toggle" aria-label="Category transaction type">
+                          {(["EXPENSE", "INCOME"] as const).map((type) => (
+                            <button
+                              aria-pressed={reportCategoryType === type}
+                              className={reportCategoryType === type ? "is-active" : ""}
+                              key={type}
+                              onClick={() => setReportCategoryType(type)}
+                              type="button"
+                            >
+                              {type === "EXPENSE" ? "Expense" : "Income"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="report-pie-content">
+                        <div
+                          aria-label={`${reportCategoryType === "EXPENSE" ? "Expenses" : "Income"} by category`}
+                          className={`report-donut ${reportData.categories.length ? "" : "is-empty"}`}
+                          role="img"
+                          style={{
+                            background: reportData.categories.length
+                              ? `conic-gradient(${reportData.categories.map((category, index) => {
+                                  const total = reportData.categories.reduce((sum, item) => sum + item.amount, 0);
+                                  const start = reportData.categories.slice(0, index).reduce((sum, item) => sum + item.amount, 0) / total * 100;
+                                  const end = start + category.amount / total * 100;
+                                  return `${REPORT_COLORS[index % REPORT_COLORS.length]} ${start}% ${end}%`;
+                                }).join(", ")})`
+                              : undefined,
+                          }}
+                        >
+                          <span>
+                            <strong>{formatMoney(reportData.categories.reduce((sum, category) => sum + category.amount, 0), currency)}</strong>
+                            <small>{reportCategoryType === "EXPENSE" ? "total spent" : "total income"}</small>
+                          </span>
+                        </div>
+                        <div className="report-legend">
+                          {reportData.categories.length ? reportData.categories.slice(0, 6).map((category, index) => (
+                            <div className="report-legend-item" key={category.id}>
+                              <span className="report-legend-dot" style={{ backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                              <span>{category.name}</span>
+                              <strong>{formatMoney(category.amount, currency)}</strong>
+                            </div>
+                          )) : (
+                            <p className="report-empty-note">No {reportCategoryType.toLowerCase()} transactions this month yet.</p>
+                          )}
+                          {reportData.categories.length > 6 && (
+                            <p className="report-more-categories">+ {reportData.categories.length - 6} more categories</p>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+
+                    <article className="report-card report-weekly-card">
+                      <div className="report-card-heading">
+                        <div>
+                          <p className="eyebrow">The rhythm</p>
+                          <h2>Weekly cash flow</h2>
+                        </div>
+                        <div className="report-chart-key"><span className="key-expense" /> Spent <span className="key-income" /> Income</div>
+                      </div>
+                      <div className="report-weekly-chart" role="img" aria-label={`Weekly income and spending during ${formatMonth(reportMonth)}`}>
+                        {reportData.weeklyTotals.map((week) => {
+                          const max = Math.max(1, ...reportData.weeklyTotals.flatMap((item) => [item.expenses, item.income]));
+                          return (
+                            <div className="report-week-column" key={week.label}>
+                              <div className="report-week-bars">
+                                <span className="week-bar week-bar-expense" style={{ height: `${Math.max(week.expenses ? 5 : 0, week.expenses / max * 100)}%` }} title={`Spent ${formatMoney(week.expenses, currency)}`} />
+                                <span className="week-bar week-bar-income" style={{ height: `${Math.max(week.income ? 5 : 0, week.income / max * 100)}%` }} title={`Income ${formatMoney(week.income, currency)}`} />
+                              </div>
+                              <span>Days {week.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {!reportData.selectedMonthTransactions.length && (
+                        <p className="report-empty-note">Add transactions to see your cash flow here.</p>
+                      )}
+                    </article>
+                  </div>
+                  <article className="report-card report-category-bars">
+                    <div className="report-card-heading">
+                      <div>
+                        <p className="eyebrow">Where it goes</p>
+                        <h2>{reportCategoryType === "EXPENSE" ? "Spend by category" : "Income by category"}</h2>
+                      </div>
+                      <div className="report-segment-toggle" aria-label="Category transaction type">
+                        {(["EXPENSE", "INCOME"] as const).map((type) => (
+                          <button
+                            aria-pressed={reportCategoryType === type}
+                            className={reportCategoryType === type ? "is-active" : ""}
+                            key={type}
+                            onClick={() => setReportCategoryType(type)}
+                            type="button"
+                          >
+                            {type === "EXPENSE" ? "Expense" : "Income"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {reportData.categories.length ? (
+                      <div className="report-category-rankings">
+                        {reportData.categories.map((category, index) => {
+                          const maxAmount = reportData.categories[0].amount;
+                          return (
+                            <div className="report-category-ranking" key={category.id}>
+                              <div className="report-category-ranking-label">
+                                <span className="report-legend-dot" style={{ backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                                <span>{category.name}</span>
+                                <strong>{formatMoney(category.amount, currency)}</strong>
+                              </div>
+                              <div
+                                aria-label={`${category.name}: ${formatMoney(category.amount, currency)}`}
+                                className="report-category-ranking-track"
+                                role="img"
+                              >
+                                <span
+                                  style={{
+                                    width: `${maxAmount > 0 ? category.amount / maxAmount * 100 : 0}%`,
+                                    backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length],
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="report-empty-note">
+                        No {reportCategoryType.toLowerCase()} by category for {formatMonth(reportMonth)} yet.
+                      </p>
+                    )}
+                  </article>
+                  <p className="report-footnote">Figures are based on transactions in {currency} for {formatMonth(reportMonth)}.</p>
+                </div>
+              ) : reportTab === "budgets" ? (
+                <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-budgets">
+                  <div className="report-section-intro">
+                    <div>
+                      <p className="eyebrow">Spend with intention</p>
+                      <h2>Your monthly budgets</h2>
+                      <p>Set a limit for each category. Your budgets are saved on this device.</p>
+                    </div>
+                    <div className="budget-total-card">
+                      <span>Spent this month</span>
+                      <strong>{formatMoney(reportData.monthTotals.EXPENSE, currency)}</strong>
+                    </div>
+                  </div>
+                  {budgetStorageLoadError && <p className="report-storage-error" role="alert">{budgetStorageLoadError}</p>}
+                  {budgetStorageWriteError && <p className="report-storage-error" role="alert">{budgetStorageWriteError}</p>}
+                  {reportData.expenseCategories.length ? (
+                    <div className="report-card budget-list">
+                      {reportData.expenseCategories.map((category, index) => {
+                        const limit = Number(budgetLimits[category.id]) || 0;
+                        const used = limit ? Math.min(100, category.amount / limit * 100) : 0;
+                        const overBudget = limit > 0 && category.amount > limit;
+                        return (
+                          <div className="budget-row" key={category.id}>
+                            <div className="budget-category">
+                              <span className="report-legend-dot" style={{ backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length] }} />
+                              <div><strong>{category.name}</strong><small>{formatMoney(category.amount, currency)} spent</small></div>
+                            </div>
+                            <div className="budget-progress-wrap">
+                              <div className="budget-progress-track">
+                                <span className={overBudget ? "is-over-budget" : ""} style={{ width: `${used}%` }} />
+                              </div>
+                              <small>{limit ? `${Math.round(category.amount / limit * 100)}% of limit${overBudget ? " · over budget" : ""}` : "No limit set"}</small>
+                            </div>
+                            <label className="budget-limit-field">
+                              <span>Monthly limit</span>
+                              <span className="budget-limit-input">
+                                <span>{currency}</span>
+                                <input
+                                  aria-label={`${category.name} monthly budget limit`}
+                                  min="0"
+                                  onChange={(event) => setBudgetLimits((current) => ({
+                                    ...current,
+                                    [category.id]: event.target.value,
+                                  }))}
+                                  placeholder="Set limit"
+                                  step="0.01"
+                                  type="number"
+                                  value={budgetLimits[category.id] ?? ""}
+                                />
+                              </span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="report-card report-empty-card">
+                      <span className="reports-illustration"><Icon name="wallet" /></span>
+                      <h3>Your categories will show up here.</h3>
+                      <p>Add an expense transaction and you can set a monthly limit for its category.</p>
+                    </div>
+                  )}
+                  <p className="report-footnote">Budget limits are stored in this browser and are specific to your signed-in username.</p>
+                </div>
+              ) : (
+                <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-trends">
+                  <div className="report-metrics report-trend-metrics">
+                    <article className="report-metric-card report-metric-expense">
+                      <span><Icon name="expense" /> Average monthly spend</span>
+                      <strong>{formatMoney(reportData.averageMonthlySpend, currency)}</strong>
+                      <small>Across the last six months</small>
+                    </article>
+                    <article className="report-metric-card report-metric-income">
+                      <span><Icon name="income" /> Average monthly income</span>
+                      <strong>{formatMoney(reportData.averageMonthlyIncome, currency)}</strong>
+                      <small>Across the last six months</small>
+                    </article>
+                  </div>
+                  <article className="report-card report-trends-card">
+                    <div className="report-card-heading">
+                      <div>
+                        <p className="eyebrow">The bigger picture</p>
+                        <h2>Income & spending</h2>
+                      </div>
+                      <div className="report-chart-key"><span className="key-expense" /> Spent <span className="key-income" /> Income</div>
+                    </div>
+                    <div className="report-trends-chart" role="img" aria-label="Income and spending trends across the last six months">
+                      {reportData.trends.map((month) => {
+                        const max = Math.max(1, ...reportData.trends.flatMap((item) => [item.EXPENSE, item.INCOME]));
+                        return (
+                          <div className="report-trend-column" key={month.month}>
+                            <div className="report-trend-bars">
+                              <span className="week-bar week-bar-expense" style={{ height: `${Math.max(month.EXPENSE ? 5 : 0, month.EXPENSE / max * 100)}%` }} title={`${month.label} spent ${formatMoney(month.EXPENSE, currency)}`} />
+                              <span className="week-bar week-bar-income" style={{ height: `${Math.max(month.INCOME ? 5 : 0, month.INCOME / max * 100)}%` }} title={`${month.label} income ${formatMoney(month.INCOME, currency)}`} />
+                            </div>
+                            <span>{month.label}</span>
+                            <small>{formatMoney(month.EXPENSE, currency)}</small>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!reportData.trends.some((month) => month.EXPENSE || month.INCOME) && (
+                      <p className="report-empty-note">Your six-month picture will take shape as you add transactions.</p>
+                    )}
+                  </article>
+                  <p className="report-footnote">The six-month view ends in {formatMonth(reportMonth)} and includes months with no activity.</p>
+                </div>
+              )}
             </section>
           ) : (
           <>
