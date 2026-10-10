@@ -1,5 +1,10 @@
 # FinanceTrackerUI
 
+## Frontend deployment
+
+See [Cloudflare Pages deployment guide](./CLOUDFLARE_DEPLOYMENT.md) for setup,
+deployment, and how to verify whether the frontend is live.
+
 ## Android app
 
 The web app can be packaged as an Android app with Capacitor. The `WebApp/android/` project is included. From `WebApp/`, install dependencies:

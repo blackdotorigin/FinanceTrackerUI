@@ -11,8 +11,9 @@ npm install
 npm run dev
 ```
 
-Set `VITE_API_BASE_URL` in a local `.env` file if the API is not running at
-`http://localhost:8080`. See `.env.example`.
+To use the configured API URL locally, copy `.env.example` to `.env`. Vite does
+not load `.env.example` automatically. The frontend defaults to the configured
+Render API URL when `VITE_API_BASE_URL` is not set.
 
 ## Deploy to Cloudflare Pages
 

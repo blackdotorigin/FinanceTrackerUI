@@ -6,7 +6,7 @@ import AdvancedTransactions from "./transactions/AdvancedTransactions";
 import TransactionDetails from "./transactions/TransactionDetails";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
+  import.meta.env.VITE_API_BASE_URL || "https://financetracker-iulg.onrender.com"
 ).replace(/\/+$/, "");
 const PAGE_SIZE = 100;
 let dashboardRefreshRequest: Promise<string> | null = null;
