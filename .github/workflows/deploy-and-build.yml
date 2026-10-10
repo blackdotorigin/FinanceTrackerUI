@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: WebApp
     env:
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://financetracker-iulg.onrender.com' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
       run:
         working-directory: WebApp
     env:
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://financetracker-iulg.onrender.com' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

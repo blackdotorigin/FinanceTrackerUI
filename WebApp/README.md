@@ -23,8 +23,8 @@ variables → Actions**:
 - Secret `CLOUDFLARE_API_TOKEN` with the Cloudflare Pages **Edit** permission.
 - Secret `CLOUDFLARE_ACCOUNT_ID`.
 - Variable `CLOUDFLARE_PAGES_PROJECT_NAME` matching the Pages project name.
-- Variable `VITE_API_BASE_URL` set to the deployed API's base URL (for example,
-  `https://your-api.example.com`).
+- Optionally, variable `VITE_API_BASE_URL` to override the default backend
+  `https://financetracker-iulg.onrender.com`.
 
 The workflow in `.github/workflows/deploy-and-build.yml` builds the Vite app
 and deploys it on pushes to `main`. Pull requests run the builds but do not
@@ -42,9 +42,9 @@ browser or file manager you used. The APK is debug-signed for direct testing;
 publishing through Google Play requires a properly signed release build.
 
 Cloudflare Pages hosts the static web build directly; it does not require a
-Docker image. The APK uses the `VITE_API_BASE_URL` repository variable too, so
-it needs to be set to a publicly reachable API URL before the workflow runs;
-`localhost` would refer to the phone itself.
+Docker image. Both the web build and APK use the Render backend by default.
+`VITE_API_BASE_URL` can override it; use a publicly reachable URL, since
+`localhost` on an Android phone refers to the phone itself.
 
 ## Authentication behavior
 
