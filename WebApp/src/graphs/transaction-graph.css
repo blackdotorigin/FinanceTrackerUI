@@ -1,0 +1,564 @@
+.graphs-page {
+  max-width: 1140px;
+}
+
+.graph-page-heading {
+  margin-bottom: 22px;
+}
+
+.transaction-graph {
+  --graph-accent: #d58c72;
+  --graph-accent-deep: #b86f58;
+  --graph-fill: url("#graph-area-expense");
+  --graph-glow: rgba(190, 113, 85, .17);
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 32px);
+  color: #304539;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(188, 215, 190, .2), transparent 35%),
+    linear-gradient(145deg, #fff 0%, #fbfcfa 100%);
+  border: 1px solid #e9eee8;
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(35, 49, 38, .065), 0 3px 10px rgba(35, 49, 38, .025);
+}
+
+.transaction-graph.is-income {
+  --graph-accent: #6b9a73;
+  --graph-accent-deep: #527d5a;
+  --graph-fill: url("#graph-area-income");
+  --graph-glow: rgba(89, 138, 98, .18);
+}
+
+.transaction-graph-heading,
+.transaction-graph-period {
+  display: flex;
+  align-items: center;
+}
+
+.transaction-graph-heading {
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.transaction-graph-heading h2 {
+  margin: 0;
+  color: #2d4435;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(20px, 3vw, 27px);
+  font-weight: 700;
+  letter-spacing: -.8px;
+}
+
+.transaction-graph-heading > div:first-child > p:first-child {
+  margin: 0 0 7px;
+  color: #839589;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.transaction-graph-heading > div:first-child > p:last-child {
+  margin: 7px 0 0;
+  color: #8a968e;
+  font-size: 10px;
+}
+
+.transaction-graph-data-note {
+  margin: 16px 0 -8px;
+  color: #929d95;
+  font-size: 9px;
+}
+
+.transaction-graph-controls {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.transaction-graph-type,
+.transaction-graph-ranges {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  background: #f0f4ef;
+  border: 1px solid #e9eee8;
+  border-radius: 10px;
+}
+
+.transaction-graph-type button,
+.transaction-graph-ranges button {
+  min-height: 30px;
+  padding: 0 12px;
+  color: #839087;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  transition: color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+.transaction-graph-type button.is-active,
+.transaction-graph-ranges button.is-active {
+  color: var(--graph-accent-deep);
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(35, 49, 38, .1);
+}
+
+.transaction-graph-period {
+  justify-content: center;
+  gap: 14px;
+  margin: 25px 0 4px;
+}
+
+.transaction-graph-period button {
+  width: 29px;
+  height: 29px;
+  color: #66806c;
+  background: #f2f6f0;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.transaction-graph-period button:hover:not(:disabled) {
+  color: #34573d;
+  background: #e6efe3;
+}
+
+.transaction-graph-period button:disabled {
+  color: #c1cbc2;
+  cursor: not-allowed;
+}
+
+.transaction-graph-period strong {
+  min-width: 150px;
+  color: #68796e;
+  font-size: 10px;
+  text-align: center;
+}
+
+.transaction-graph-total {
+  display: grid;
+  justify-items: center;
+  margin: 4px auto 0;
+}
+
+.transaction-graph-total > span {
+  color: #909c93;
+  font-size: 9px;
+}
+
+.transaction-graph-total > strong {
+  margin-top: 4px;
+  color: #2d4435;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(25px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+}
+
+.transaction-graph-total > small {
+  margin-top: 2px;
+  color: var(--graph-accent-deep);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.transaction-graph-chart-wrap {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 1000 / 270;
+  max-height: 330px;
+  margin-top: 6px;
+  overflow: visible;
+}
+
+.transaction-graph-grid {
+  position: absolute;
+  inset: 17px 3% 38px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.transaction-graph-grid span {
+  border-top: 1px dashed #e9eee9;
+}
+
+.transaction-graph-chart {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  outline: none;
+  touch-action: pan-y;
+}
+
+.transaction-graph-chart:focus-visible {
+  outline: 2px solid #96ad99;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.transaction-graph-chart:not(:disabled) {
+  cursor: crosshair;
+}
+
+.transaction-graph-chart:hover .transaction-graph-line {
+  stroke-width: 4.5;
+  filter: drop-shadow(0 2px 5px var(--graph-glow));
+}
+
+.transaction-graph-chart-wrap.is-updating .transaction-graph-chart {
+  opacity: .48;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+.transaction-graph-loading {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 6%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #65776a;
+  background: rgba(255, 255, 255, .36);
+  border-radius: 12px;
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.transaction-graph-loading-indicator {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--graph-accent) 25%, transparent);
+  border-top-color: var(--graph-accent);
+  border-radius: 50%;
+  animation: transaction-graph-spin .8s linear infinite;
+}
+
+@keyframes transaction-graph-spin {
+  to { transform: rotate(360deg); }
+}
+
+.transaction-graph-loading.is-error {
+  padding: 20px;
+  color: #a45e51;
+  background: rgba(255, 255, 255, .92);
+  text-align: center;
+}
+
+
+
+.transaction-graph-area {
+  fill: var(--graph-fill);
+}
+
+.transaction-graph-line {
+  fill: none;
+  stroke: var(--graph-accent);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.transaction-graph.is-animating .transaction-graph-area {
+  animation: transaction-graph-area-reveal .42s ease-out both;
+}
+
+.transaction-graph.is-animating .transaction-graph-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: transaction-graph-line-reveal .42s ease-out both;
+}
+
+@keyframes transaction-graph-area-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes transaction-graph-line-reveal {
+  to { stroke-dashoffset: 0; }
+}
+
+.transaction-graph-tick {
+  fill: #9aa49c;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.transaction-graph-cursor {
+  stroke: color-mix(in srgb, var(--graph-accent) 60%, #fff);
+  stroke-dasharray: 3 5;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.transaction-graph-pointer-halo {
+  fill: #fff;
+  stroke: var(--graph-glow);
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.transaction-graph-pointer {
+  fill: var(--graph-accent-deep);
+  stroke: #fff;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.transaction-graph-chart:hover .transaction-graph-pointer-halo {
+  stroke-width: 7;
+}
+
+.transaction-graph-hover-card {
+  position: absolute;
+  z-index: 3;
+  top: var(--point-y);
+  left: max(8px, min(calc(var(--point-x) - 160px), calc(100% - 328px)));
+  width: min(320px, calc(100% - 16px));
+  padding: 15px 16px;
+  color: #405449;
+  background: rgba(255, 255, 253, .97);
+  border: 1px solid rgba(226, 234, 225, .95);
+  border-radius: 15px;
+  box-shadow: 0 14px 34px rgba(35, 49, 38, .16), 0 2px 7px rgba(35, 49, 38, .06);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  transform: translateY(12px);
+}
+
+.transaction-graph-hover-card.is-above-point {
+  transform: translateY(calc(-100% - 12px));
+}
+
+.transaction-graph-hover-date,
+.transaction-graph-hover-total,
+.transaction-graph-hover-caption {
+  display: block;
+}
+
+.transaction-graph-hover-date {
+  color: #839087;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.transaction-graph-hover-total {
+  margin-top: 4px;
+  color: var(--graph-accent-deep);
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+  letter-spacing: -.4px;
+}
+
+.transaction-graph-hover-caption {
+  margin-top: 2px;
+  color: #98a299;
+  font-size: 8px;
+}
+
+.transaction-graph-hover-card ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transaction-graph-hover-card li {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #eef1ed;
+}
+
+.transaction-graph-hover-card li > span {
+  min-width: 0;
+  flex: 1;
+}
+
+.transaction-graph-hover-card li strong,
+.transaction-graph-hover-card li small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-graph-hover-card li strong {
+  color: #48594d;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.transaction-graph-hover-card li small {
+  margin-top: 2px;
+  color: #9aa49c;
+  font-size: 7px;
+}
+
+.transaction-graph-hover-card li b {
+  color: var(--graph-accent-deep);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.transaction-graph-hover-card .transaction-graph-hover-more {
+  justify-content: center;
+  color: #929d95;
+  font-size: 8px;
+}
+
+.transaction-graph-hover-card > p {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  color: #929d95;
+  border-top: 1px solid #eef1ed;
+  font-size: 8px;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph {
+  color: #e4ebe5;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(75, 112, 80, .12), transparent 35%),
+    linear-gradient(145deg, #1d2621, #1b241f);
+  border-color: #2c3731;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .2);
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-heading h2,
+.dashboard-app[data-theme="dark"] .transaction-graph-total > strong {
+  color: #e1e9e2;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-heading > div:first-child > p:last-child,
+.dashboard-app[data-theme="dark"] .transaction-graph-data-note,
+.dashboard-app[data-theme="dark"] .transaction-graph-tick,
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-date,
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-caption,
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card li small,
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-more,
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card > p {
+  color: #9aa99f;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-type,
+.dashboard-app[data-theme="dark"] .transaction-graph-ranges {
+  background: #29362c;
+  border-color: #354139;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-type button,
+.dashboard-app[data-theme="dark"] .transaction-graph-ranges button {
+  color: #a0afa4;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-type button.is-active,
+.dashboard-app[data-theme="dark"] .transaction-graph-ranges button.is-active {
+  color: #d7e3d8;
+  background: #364539;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-period button {
+  color: #b3c4b5;
+  background: #29362c;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-period button:hover:not(:disabled) {
+  color: #e0e9e0;
+  background: #364638;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-period strong {
+  color: #b8c6bb;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-grid span {
+  border-color: #303a33;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-loading {
+  color: #c2d0c4;
+  background: rgba(29, 38, 33, .42);
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-loading.is-error {
+  color: #e0aaa0;
+  background: rgba(29, 38, 33, .94);
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-pointer-halo {
+  fill: #1d2621;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-pointer {
+  stroke: #1d2621;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card {
+  color: #e1e9e2;
+  background: rgba(29, 38, 33, .97);
+  border-color: #354139;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card li {
+  border-color: #2c3731;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card li strong {
+  color: #d0dbd1;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-graph-hover-card > p {
+  border-color: #2c3731;
+}
+
+@media (max-width: 720px) {
+  .graphs-page { padding-bottom: 24px; }
+  .transaction-graph { border-radius: 17px; }
+  .transaction-graph-heading { align-items: flex-start; flex-direction: column; }
+  .transaction-graph-controls { width: 100%; justify-items: stretch; }
+  .transaction-graph-type,
+  .transaction-graph-ranges { width: 100%; }
+  .transaction-graph-type button,
+  .transaction-graph-ranges button { flex: 1; }
+  .transaction-graph-chart-wrap { max-height: none; }
+  .transaction-graph-hover-card {
+    left: max(8px, min(calc(var(--point-x) - 130px), calc(100% - 268px)));
+    width: min(260px, calc(100% - 16px));
+    padding: 13px 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .transaction-graph { padding: 17px 14px; }
+  .transaction-graph-heading h2 { font-size: 21px; }
+  .transaction-graph-tick { font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-graph *,
+  .transaction-graph *::before,
+  .transaction-graph *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FinanceFlow</string>
+    <string name="title_activity_main">FinanceFlow</string>
+    <string name="package_name">com.blackdotorigin.financeflow</string>
+    <string name="custom_url_scheme">com.blackdotorigin.financeflow</string>
+</resources>

@@ -580,6 +580,124 @@
   cursor: not-allowed;
 }
 
+.admin-deactivation-dialog {
+  width: min(440px, calc(100% - 32px));
+  padding: 28px;
+  color: #304437;
+  background: #fff;
+  border: 1px solid #e4ebe3;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(24, 48, 30, .24);
+}
+
+.admin-deactivation-dialog[open] {
+  animation: admin-dialog-arrive .2s ease-out both;
+}
+
+.admin-deactivation-dialog::backdrop {
+  background: rgba(16, 25, 19, .52);
+  backdrop-filter: blur(4px);
+}
+
+.admin-deactivation-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: #a45b50;
+  background: #fff2ed;
+  border: 1px solid #f6e4dd;
+  border-radius: 15px;
+}
+
+.admin-deactivation-icon svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.admin-deactivation-eyebrow {
+  margin: 20px 0 7px;
+  color: #829186;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.admin-deactivation-dialog h2 {
+  margin: 0;
+  color: #293e30;
+  font-family: "Manrope", sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -.55px;
+}
+
+.admin-deactivation-description {
+  margin: 10px 0 0;
+  color: #748278;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.admin-deactivation-description strong {
+  color: #43584a;
+}
+
+.admin-deactivation-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 24px;
+}
+
+.admin-deactivation-actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  transition: background .16s, border-color .16s, transform .16s;
+}
+
+.admin-deactivation-cancel {
+  color: #53675a;
+  background: #f4f7f3;
+  border-color: #e8eee6 !important;
+}
+
+.admin-deactivation-cancel:hover {
+  background: #eaf1e8;
+  border-color: #dce7da !important;
+}
+
+.admin-deactivation-confirm {
+  color: #fff8f5;
+  background: #a85f52;
+}
+
+.admin-deactivation-confirm:hover:not(:disabled) {
+  background: #914d43;
+  transform: translateY(-1px);
+}
+
+.admin-deactivation-confirm:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+@keyframes admin-dialog-arrive {
+  from { opacity: 0; transform: translateY(7px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .admin-wizard-filters {
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: end;
@@ -1045,9 +1163,54 @@
 
 @media (prefers-reduced-motion: reduce) {
   .admin-wizard-content,
-  .admin-wizard-panel {
+  .admin-wizard-panel,
+  .admin-deactivation-dialog[open] {
     animation: none;
   }
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-dialog {
+  color: #e8f0e9;
+  background: #1e2a22;
+  border-color: #3b4b3e;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-dialog::backdrop {
+  background: rgba(4, 9, 6, .72);
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-icon {
+  color: #efb2a4;
+  background: #392b27;
+  border-color: #503a33;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-eyebrow {
+  color: #b4c2b7;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-dialog h2 {
+  color: #eef5ef;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-description {
+  color: #bdc9bf;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-description strong {
+  color: #e1e9e2;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-cancel {
+  color: #d1ddd2;
+  background: #29372d;
+  border-color: #3a4a3d !important;
+}
+
+.dashboard-app[data-theme="dark"] .admin-deactivation-cancel:hover {
+  background: #344438;
+  border-color: #4b604e !important;
 }
 
   .dashboard-app[data-theme="dark"] .admin-wizard-hero {

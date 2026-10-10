@@ -288,6 +288,8 @@ export default function AdminPanel({
   const [view, setView] = useState<"account" | "edit" | "transactions">("account");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deactivationConfirmOpen, setDeactivationConfirmOpen] = useState(false);
+  const deactivationDialogRef = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [fullName, setFullName] = useState("");
@@ -304,6 +306,13 @@ export default function AdminPanel({
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    const dialog = deactivationDialogRef.current;
+    if (!dialog) return;
+    if (deactivationConfirmOpen && !dialog.open) dialog.showModal();
+    if (!deactivationConfirmOpen && dialog.open) dialog.close();
+  }, [deactivationConfirmOpen]);
 
   async function lookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -427,7 +436,7 @@ export default function AdminPanel({
 
   async function deactivateUser() {
     if (!user || user.id === currentUserId) return;
-    if (!window.confirm(`Deactivate ${user.fullName} (@${user.username})?`)) return;
+    setDeactivationConfirmOpen(false);
     setSaving(true);
     setError("");
     setNotice("");
@@ -550,7 +559,7 @@ export default function AdminPanel({
                 {isSelf && <small className="admin-wizard-hint">You can’t change or deactivate your own account.</small>}
               </div>
               <p className="admin-wizard-token-note">Role changes take effect after the user receives a new access token.</p>
-              <button className="admin-wizard-danger" disabled={saving || isSelf} onClick={() => void deactivateUser()} type="button">Deactivate this account</button>
+              <button className="admin-wizard-danger" disabled={saving || isSelf} onClick={() => setDeactivationConfirmOpen(true)} type="button">Deactivate this account</button>
             </section>
           )}
 
@@ -589,6 +598,48 @@ export default function AdminPanel({
           )}
         </div>
       )}
+      <dialog
+        aria-describedby={user ? "admin-deactivation-description" : undefined}
+        aria-labelledby="admin-deactivation-title"
+        className="admin-deactivation-dialog"
+        onCancel={(event) => {
+          event.preventDefault();
+          setDeactivationConfirmOpen(false);
+        }}
+        ref={deactivationDialogRef}
+      >
+        <span className="admin-deactivation-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 3 21 19H3L12 3Z" />
+            <path d="M12 9v4m0 3h.01" />
+          </svg>
+        </span>
+        <p className="admin-deactivation-eyebrow">ACCOUNT ACCESS</p>
+        <h2 id="admin-deactivation-title">Deactivate this account?</h2>
+        {user && (
+          <p className="admin-deactivation-description" id="admin-deactivation-description">
+            <strong>{user.fullName || user.username}</strong> (@{user.username}) will lose access to FinanceFlow. You can’t undo this action here.
+          </p>
+        )}
+        <div className="admin-deactivation-actions">
+          <button
+            autoFocus
+            className="admin-deactivation-cancel"
+            onClick={() => setDeactivationConfirmOpen(false)}
+            type="button"
+          >
+            Keep account
+          </button>
+          <button
+            className="admin-deactivation-confirm"
+            disabled={saving}
+            onClick={() => void deactivateUser()}
+            type="button"
+          >
+            Deactivate account
+          </button>
+        </div>
+      </dialog>
     </section>
   );
 }
