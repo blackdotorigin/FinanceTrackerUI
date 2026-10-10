@@ -17,22 +17,24 @@ Render API URL when `VITE_API_BASE_URL` is not set.
 
 ## Deploy to Cloudflare Pages
 
-Create a Cloudflare Pages project with the project name you intend to use, then
-configure these GitHub repository settings under **Settings → Secrets and
-variables → Actions**:
+Connect the GitHub repository from **Cloudflare → Workers & Pages → Create
+application → Continue to Pages → Import an existing Git repository**. Use
+these build settings:
 
-- Secret `CLOUDFLARE_API_TOKEN` with the Cloudflare Pages **Edit** permission.
-- Secret `CLOUDFLARE_ACCOUNT_ID`.
-- Variable `CLOUDFLARE_PAGES_PROJECT_NAME` matching the Pages project name.
-- Optionally, variable `VITE_API_BASE_URL` to override the default backend
-  `https://financetracker-iulg.onrender.com`.
+- Framework preset: `React (Vite)`
+- Root directory: `WebApp` (case-sensitive)
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Production environment variable: `VITE_API_BASE_URL` =
+  `https://financetracker-iulg.onrender.com`
 
-The workflow in `.github/workflows/deploy-and-build.yml` builds the Vite app
-and deploys it on pushes to `main`. Pull requests run the builds but do not
-deploy. Vite embeds `VITE_API_BASE_URL` in the production build; do not commit a
-production `.env` file. The `public/_redirects` rule is copied into the build
-output so direct requests to frontend paths, including `/auth/callback`, are
-served by the React app.
+Cloudflare's Git integration deploys the frontend on pushes to its configured
+production branch. The GitHub Actions workflow only builds the frontend as a
+check and builds the Android APK; it does not deploy the frontend. No
+Cloudflare API token or Pages project-name GitHub setting is needed for this
+Git-connected deployment. The `public/_redirects` rule is copied into the
+build output so direct requests to frontend paths, including `/auth/callback`,
+are served by the React app.
 
 The same workflow builds a debug Android APK and uploads it as the
 `financeflow-debug-apk` workflow artifact. To download it, open the successful

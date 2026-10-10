@@ -7,70 +7,57 @@ settings below are configured.
 
 ## One-time setup
 
-### 1. Create a Cloudflare Pages project
+### 1. Connect a Cloudflare Pages project to GitHub
 
-In the Cloudflare dashboard, open **Workers & Pages**, create a Pages project
-using **Direct Upload**, and choose a project name. The GitHub Actions workflow
-will upload the built site to this project. Do not also enable a separate
-Cloudflare Git build for the same project; this repository's workflow handles
-building and uploading.
+In the Cloudflare dashboard, open **Workers & Pages → Create application →
+Continue to Pages → Import an existing Git repository**. Connect
+`blackdotorigin/FinanceTrackerUI` and select the branch to deploy (normally
+`main`). This creates a Cloudflare Pages project connected to GitHub. Cloudflare
+will build and deploy the frontend when changes are pushed to that branch.
 
-### 2. Add GitHub repository settings
+Configure the build:
 
-In the GitHub repository, open **Settings → Secrets and variables → Actions**.
-Add:
+- Framework preset: **React (Vite)**
+- Root directory: **`WebApp`** (case-sensitive)
+- Build command: **`npm run build`**
+- Build output directory: **`dist`**
+- Production environment variable: `VITE_API_BASE_URL` =
+  `https://financetracker-iulg.onrender.com`
 
-**Repository secrets**
+The Pages project name is chosen during creation. It does not need to match the
+existing `financetrackerui.blackdotorigin.workers.dev` Worker.
 
-- `CLOUDFLARE_API_TOKEN` — a Cloudflare API token with permission to edit
-  Cloudflare Pages.
-- `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID that owns the Pages
-  project.
+### 2. GitHub Actions settings
 
-**Repository variables**
-
-- `CLOUDFLARE_PAGES_PROJECT_NAME` — the exact project name created in
-  Cloudflare.
-- `VITE_API_BASE_URL` is optional. If omitted, the workflow uses
-  `https://financetracker-iulg.onrender.com`. Set it only if you want to
-  override that backend URL.
-
-Do not put the API token or account ID in repository variables, source files,
-or committed `.env` files.
+The GitHub Actions workflow still builds the frontend as a check and builds
+the Android APK, but **does not deploy the frontend**. Cloudflare's Git
+integration is the only frontend deployment path, so there are no Cloudflare
+API token, account ID, or Pages project-name GitHub secrets/variables required
+for this workflow. You can optionally add `VITE_API_BASE_URL` as a GitHub
+Actions variable to override the backend URL when building the APK.
 
 ## Deploy
 
 The workflow is [`.github/workflows/deploy-and-build.yml`](./.github/workflows/deploy-and-build.yml).
 
-- A push to `main` builds the frontend, deploys it to Cloudflare Pages, and
-  also runs the Android APK build.
-- A pull request targeting `main` runs the builds but does not deploy.
-- To deploy without a new code change, go to the repository's **Actions** tab,
-  select **Build and deploy**, choose **Run workflow**, select `main`, and
-  start it.
-
-The Pages build uses `WebApp` as its project root, runs `npm ci` and
-`npm run build`, then uploads `WebApp/dist`. The frontend API URL is embedded
-at build time. The `WebApp/public/_redirects` file enables direct navigation
-to frontend routes such as `/auth/callback`.
+- Push or merge changes to the configured production branch. Cloudflare
+  automatically builds and deploys the frontend.
+- GitHub Actions independently runs the frontend build check and creates an
+  Android APK; its status does not control the Cloudflare deployment.
+- The frontend API URL is embedded at build time. The
+  `WebApp/public/_redirects` file enables direct navigation to frontend routes
+  such as `/auth/callback`.
 
 ## Check whether it deployed
 
-1. Open the repository's **Actions** tab and select the latest **Build and
-   deploy** run for `main`.
-2. In the run summary, confirm the **deploy-pages** job completed successfully.
-   A successful build alone is not proof of deployment.
-3. In Cloudflare, open **Workers & Pages → your Pages project → Deployments**
-   and confirm a recent **Production** deployment completed successfully.
-4. Open the `*.pages.dev` URL shown for the production deployment. Confirm the
+1. In Cloudflare, open **Workers & Pages → your Pages project → Deployments**
+   and confirm the latest **Production** deployment completed successfully.
+2. Open the `*.pages.dev` URL shown for the production deployment. Confirm the
    app loads, then refresh a frontend route directly to check SPA routing.
-5. Try signing in or loading data to check the API integration. The Render API
+3. Try signing in or loading data to check the API integration. The Render API
    must allow requests from the Pages origin with the appropriate CORS and
    credentials settings.
 
-If there is no workflow run, push or merge a change to `main` or manually run
-the workflow. If `build-web` succeeds but `deploy-pages` fails, check that the
-Cloudflare secrets and project-name variable exist, the project already
-exists, and it belongs to the account identified by `CLOUDFLARE_ACCOUNT_ID`.
-If a `main` run reports missing secrets or variables, configure them and
-re-run it.
+If no Cloudflare deployment appears, check that the Pages project is connected
+to the correct repository and production branch, and that its root directory
+is exactly `WebApp` (capitalization matters).

@@ -1,4 +1,4 @@
-name: Build and deploy
+name: Build frontend and Android APK
 
 on:
   push:
@@ -45,14 +45,6 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Upload Pages build
-        uses: actions/upload-artifact@v4
-        with:
-          name: pages-dist
-          path: WebApp/dist
-          if-no-files-found: error
-          retention-days: 1
-
   build-android:
     runs-on: ubuntu-latest
     defaults:
@@ -79,6 +71,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
@@ -103,41 +97,3 @@ jobs:
           path: WebApp/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-
-  deploy-pages:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: build-web
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Pages build
-        uses: actions/download-artifact@v4
-        with:
-          name: pages-dist
-          path: WebApp/dist
-
-      - name: Check Cloudflare configuration
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "Configure the CLOUDFLARE_API_TOKEN GitHub secret before deploying."
-            exit 1
-          fi
-          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Configure the CLOUDFLARE_ACCOUNT_ID GitHub secret before deploying."
-            exit 1
-          fi
-          if [ -z "$CLOUDFLARE_PAGES_PROJECT_NAME" ]; then
-            echo "Configure the CLOUDFLARE_PAGES_PROJECT_NAME GitHub variable before deploying."
-            exit 1
-          fi
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
-          workingDirectory: WebApp
