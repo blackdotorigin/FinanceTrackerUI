@@ -1,10 +1,32 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import { API_BASE_URL } from "./api/apiBaseUrl";
 import FinanceDashboard from "./FinanceDashboard";
 import { useAutoHideScrollbars } from "./hooks/useAutoHideScrollbars";
 
 let oauthRefreshRequest: Promise<unknown> | null = null;
+let mobileSessionRestoreRequest: Promise<string | null> | null = null;
+const WELCOME_DURATION_MS = 6000;
+const WELCOME_DURATION_SECONDS = Math.ceil(WELCOME_DURATION_MS / 1000);
+const MOBILE_OAUTH_CALLBACK = "com.blackdotorigin.financeflow://auth/callback";
+
+function createUrlSafeRandomString(): string {
+  let binary = "";
+  window.crypto.getRandomValues(new Uint8Array(32)).forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return window.btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function createPkceChallenge(verifier: string): Promise<string> {
+  const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  let binary = "";
+  new Uint8Array(digest).forEach((byte) => { binary += String.fromCharCode(byte); });
+  return window.btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
 
 function BrandMark() {
   return (
@@ -47,6 +69,49 @@ function Sparkle({ className = "" }: { className?: string }) {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function LuxuryWelcomeScreen({ secondsRemaining }: { secondsRemaining: number }) {
+  return (
+    <main className="page-shell premium-intro-shell">
+      <div className="premium-intro" aria-label="Welcome screen">
+        <div className="intro-glass">
+          <section className="intro-welcome-panel" aria-label="Black Dot welcome">
+            <div className="intro-brand-lockup" aria-label="FinanceFlow brand mark">
+              <BrandMark />
+            </div>
+            <div className="intro-copy">
+              <span className="intro-micro">Product of</span>
+              <h1 className="intro-title" aria-label="Black Dot We Believe Quality">
+                <span className="intro-line reveal-main">Black Dot</span>
+                <span className="intro-line reveal-sub">We Believe Quality</span>
+              </h1>
+              <p className="intro-message">
+                <span>The present becomes the past.</span>
+                <span>The future depends on what we do today.</span>
+                <span>Be mindful of the moments you create.</span>
+              </p>
+            </div>
+          </section>
+          <aside className="intro-transition-panel" aria-label={`Opening sign in in ${secondsRemaining} seconds`}>
+            <p className="intro-transition-eyebrow">A clearer way forward</p>
+            <p className="intro-transition-title">Your finances,<br />in flow.</p>
+            <div className="intro-countdown" role="timer" aria-live="off">
+              <span className="intro-countdown-label">Sign in opens in</span>
+              <span className="intro-countdown-value" key={secondsRemaining}>{secondsRemaining}</span>
+              <span className="intro-countdown-unit">{secondsRemaining === 1 ? "second" : "seconds"}</span>
+              <progress
+                className="intro-countdown-progress"
+                value={WELCOME_DURATION_SECONDS - secondsRemaining}
+                max={WELCOME_DURATION_SECONDS}
+                aria-label={`${WELCOME_DURATION_SECONDS - secondsRemaining} of ${WELCOME_DURATION_SECONDS} seconds elapsed`}
+              />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -290,7 +355,10 @@ function MoneyIllustration() {
 export default function App() {
   useAutoHideScrollbars();
 
-  const isOAuthCallback = window.location.pathname === "/auth/callback";
+  const [isOAuthCallback, setIsOAuthCallback] = useState(
+    window.location.pathname === "/auth/callback",
+  );
+  const [isMobileOAuthCallback, setIsMobileOAuthCallback] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -298,14 +366,219 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [defaultCurrency, setDefaultCurrency] = useState("USD");
   const [showPassword, setShowPassword] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(!isOAuthCallback);
+  const [welcomeSecondsRemaining, setWelcomeSecondsRemaining] = useState(WELCOME_DURATION_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(isOAuthCallback);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [isRestoringSession, setIsRestoringSession] = useState(
+    Capacitor.isNativePlatform(),
+  );
+  const mobileOAuthState = useRef("");
+  const mobileOAuthVerifier = useRef("");
+  const handledMobileOAuthUrls = useRef(new Set<string>());
   const clearSession = useCallback(() => setAccessToken(""), []);
 
   useEffect(() => {
-    if (!isOAuthCallback) return;
+    if (!Capacitor.isNativePlatform()) return;
+
+    let isCurrent = true;
+    const restoreSession = async () => {
+      try {
+        mobileSessionRestoreRequest ??= fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        }).then(async (response) => {
+          if (response.status === 401) return null;
+          if (!response.ok) throw new Error("Could not restore the mobile session.");
+
+          const result: unknown = await response.json();
+          if (
+            !result ||
+            typeof result !== "object" ||
+            !("accessToken" in result) ||
+            typeof result.accessToken !== "string" ||
+            !result.accessToken
+          ) {
+            throw new Error("The restored session response was invalid.");
+          }
+          return result.accessToken;
+        }).finally(() => {
+          mobileSessionRestoreRequest = null;
+        });
+
+        const restoredToken = await mobileSessionRestoreRequest;
+        if (isCurrent && restoredToken) setAccessToken(restoredToken);
+      } catch {
+        if (isCurrent) {
+          setNotice("We couldn’t restore your saved sign-in. Please check your connection and sign in again.");
+        }
+      } finally {
+        if (isCurrent) setIsRestoringSession(false);
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const handleMobileOAuthCallback = useCallback(async (callbackUrl: string) => {
+    let url: URL;
+    try {
+      url = new URL(callbackUrl);
+    } catch {
+      return;
+    }
+
+    if (
+      url.protocol !== "com.blackdotorigin.financeflow:" ||
+      url.hostname !== "auth" ||
+      url.pathname !== "/callback" ||
+      handledMobileOAuthUrls.current.has(url.href)
+    ) {
+      return;
+    }
+    handledMobileOAuthUrls.current.add(url.href);
+
+    setShowWelcome(false);
+    setIsOAuthCallback(true);
+    setIsMobileOAuthCallback(true);
+    setIsSubmitting(true);
+    setError("");
+
+    const authorizationCode = url.searchParams.get("code");
+    const returnedState = url.searchParams.get("state");
+    const providerError = url.searchParams.get("error");
+    const expectedState = mobileOAuthState.current;
+    const codeVerifier = mobileOAuthVerifier.current;
+    mobileOAuthState.current = "";
+    mobileOAuthVerifier.current = "";
+
+    if (!returnedState || returnedState !== expectedState || !codeVerifier) {
+      setError("We couldn’t verify the mobile sign-in response. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (providerError) {
+      setError("Provider sign-in was cancelled or couldn’t be completed. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!authorizationCode) {
+      setError("We couldn’t finish mobile sign-in. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/mobile/exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          code: authorizationCode,
+          codeVerifier,
+          state: returnedState,
+        }),
+      });
+      if (!response.ok) throw new Error("Mobile sign-in exchange failed.");
+
+      const result: unknown = await response.json();
+      if (
+        !result ||
+        typeof result !== "object" ||
+        !("accessToken" in result) ||
+        typeof result.accessToken !== "string" ||
+        !result.accessToken
+      ) {
+        throw new Error("Mobile sign-in response was invalid.");
+      }
+      setAccessToken(result.accessToken);
+    } catch {
+      setError("We couldn’t finish mobile sign-in. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let isCurrent = true;
+    let appUrlListener: { remove: () => Promise<void> } | undefined;
+    void CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+      void handleMobileOAuthCallback(url);
+    }).then((listener) => {
+      if (!isCurrent) {
+        void listener.remove();
+        return;
+      }
+      appUrlListener = listener;
+    }).catch(() => {
+      if (isCurrent) setError("Mobile sign-in links couldn’t be enabled. Please restart the app.");
+    });
+
+    void CapacitorApp.getLaunchUrl().then((launch) => {
+      if (isCurrent && launch?.url) void handleMobileOAuthCallback(launch.url);
+    }).catch(() => {
+      if (isCurrent) setError("The app couldn’t read its sign-in link. Please try again.");
+    });
+
+    return () => {
+      isCurrent = false;
+      if (appUrlListener) void appUrlListener.remove();
+    };
+  }, [handleMobileOAuthCallback]);
+
+  useEffect(() => {
+    if (accessToken || isOAuthCallback || isMobileOAuthCallback || isRestoringSession) return;
+
+    const welcomeStartedAt = window.performance.now();
+    const welcomeTimer = window.setTimeout(() => {
+      setWelcomeSecondsRemaining(0);
+      setShowWelcome(false);
+    }, WELCOME_DURATION_MS);
+    const countdownTimer = window.setInterval(() => {
+      const elapsed = window.performance.now() - welcomeStartedAt;
+      const remaining = Math.max(0, Math.ceil((WELCOME_DURATION_MS - elapsed) / 1000));
+      setWelcomeSecondsRemaining((current) => current === remaining ? current : remaining);
+    }, 250);
+    const audioTimer = window.setTimeout(() => {
+      const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+      if (!AudioCtor) return;
+
+      const audioContext = new AudioCtor();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(180, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(330, audioContext.currentTime + 0.26);
+
+      gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.12, audioContext.currentTime + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.7);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.72);
+      oscillator.onended = () => void audioContext.close();
+    }, 420);
+
+    return () => {
+      clearTimeout(welcomeTimer);
+      clearInterval(countdownTimer);
+      clearTimeout(audioTimer);
+    };
+  }, [accessToken, isOAuthCallback, isMobileOAuthCallback, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isOAuthCallback || isMobileOAuthCallback) return;
 
     let isCurrent = true;
     oauthRefreshRequest ??= fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
@@ -344,7 +617,40 @@ export default function App() {
     return () => {
       isCurrent = false;
     };
-  }, [isOAuthCallback]);
+  }, [isOAuthCallback, isMobileOAuthCallback]);
+
+  async function openMobileProviderSignIn(provider: "google" | "github") {
+    setError("");
+
+    try {
+      const state = createUrlSafeRandomString();
+      const codeVerifier = createUrlSafeRandomString();
+      const codeChallenge = await createPkceChallenge(codeVerifier);
+      const authorizationUrl = new URL(
+        `${API_BASE_URL}/oauth2/authorization/${provider}`,
+      );
+      authorizationUrl.searchParams.set("app_redirect_uri", MOBILE_OAUTH_CALLBACK);
+      authorizationUrl.searchParams.set("app_state", state);
+      authorizationUrl.searchParams.set("app_code_challenge", codeChallenge);
+      authorizationUrl.searchParams.set("app_code_challenge_method", "S256");
+      mobileOAuthState.current = state;
+      mobileOAuthVerifier.current = codeVerifier;
+      await Browser.open({ url: authorizationUrl.toString() });
+    } catch {
+      mobileOAuthState.current = "";
+      mobileOAuthVerifier.current = "";
+      setError("We couldn’t open provider sign-in. Please try again.");
+    }
+  }
+
+  function handleProviderSignInClick(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    provider: "google" | "github",
+  ) {
+    if (!Capacitor.isNativePlatform()) return;
+    event.preventDefault();
+    void openMobileProviderSignIn(provider);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -431,6 +737,10 @@ export default function App() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (showWelcome && !accessToken) {
+    return <LuxuryWelcomeScreen secondsRemaining={welcomeSecondsRemaining} />;
   }
 
   if (accessToken) {
@@ -626,7 +936,11 @@ export default function App() {
               <>
                 <div className="divider"><span>or continue with</span></div>
                 <div className="provider-buttons">
-                  <a className="provider-button" href={`${API_BASE_URL}/oauth2/authorization/google`}>
+                  <a
+                    className="provider-button"
+                    href={`${API_BASE_URL}/oauth2/authorization/google`}
+                    onClick={(event) => handleProviderSignInClick(event, "google")}
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.95 2.94v2.4h3.16c1.85-1.7 2.9-4.2 2.9-7.17Z" />
                       <path fill="#34A853" d="M12 21.75c2.64 0 4.85-.88 6.47-2.37l-3.16-2.4c-.88.59-2 .94-3.31.94-2.55 0-4.71-1.72-5.49-4.03H3.24v2.48A9.75 9.75 0 0 0 12 21.75Z" />
@@ -635,7 +949,11 @@ export default function App() {
                     </svg>
                     Google
                   </a>
-                  <a className="provider-button" href={`${API_BASE_URL}/oauth2/authorization/github`}>
+                  <a
+                    className="provider-button"
+                    href={`${API_BASE_URL}/oauth2/authorization/github`}
+                    onClick={(event) => handleProviderSignInClick(event, "github")}
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.72 1.15 1.72 1.15.99 1.7 2.6 1.2 3.24.92.1-.72.39-1.2.7-1.48-2.48-.28-5.1-1.24-5.1-5.52 0-1.22.44-2.21 1.15-2.99-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.54.23 2.68.11 2.96.72.78 1.15 1.77 1.15 2.99 0 4.29-2.63 5.23-5.13 5.51.4.35.75 1.03.75 2.08v3.06c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z" />
                     </svg>

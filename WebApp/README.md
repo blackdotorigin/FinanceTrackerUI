@@ -77,6 +77,11 @@ Docker image. Both the web build and APK use the Render backend by default.
   authorization endpoints. The API should redirect successful OAuth logins to
   the frontend route `/auth/callback`; the callback exchanges the HttpOnly
   refresh cookie for an access token through `POST /api/v1/auth/refresh`.
+- In the Android APK, provider sign-in opens the system browser and uses the
+  app deep link `com.blackdotorigin.financeflow://auth/callback`. The backend
+  must implement the allowlisted redirect and one-time PKCE code exchange
+  described in [`../Auth.md`](../Auth.md); the browser-cookie web callback
+  alone cannot return a usable session to the Capacitor WebView.
 - The access token stays in React memory only. It is not written to local
   storage, session storage, a cookie, or a URL.
 

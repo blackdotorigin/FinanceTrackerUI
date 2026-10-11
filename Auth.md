@@ -189,6 +189,46 @@ callback calls `POST /api/v1/auth/refresh` with credentials. This replaces the
 earlier behavior described above; access and refresh tokens must not be placed
 in redirect URLs.
 
+## Capacitor Android OAuth handoff
+
+The Android app starts Google/GitHub sign-in in the system browser and returns
+through the registered app link
+`com.blackdotorigin.financeflow://auth/callback`. The frontend adds these
+app-specific parameters to `/oauth2/authorization/{provider}`:
+
+- `app_redirect_uri`: the fixed app callback URI above. The backend must
+  allowlist it; it must not forward arbitrary caller-provided redirect URLs.
+- `app_state`: a random value that must be preserved and returned as `state`
+  after the provider flow.
+- `app_code_challenge` and `app_code_challenge_method=S256`: the PKCE challenge
+  for the app's one-time handoff code. These are separate from the provider's
+  OAuth `redirect_uri` and `state`.
+
+The backend must keep these values with the OAuth authorization request. On
+successful provider authentication, it must create a cryptographically random,
+short-lived (at most 60 seconds), single-use handoff code bound to the signed-in
+user and the PKCE challenge, then redirect to the allowlisted app URI with only
+`code` and `state` query parameters. The app validates `state` and exchanges
+the code using:
+
+```http
+POST /api/v1/auth/mobile/exchange
+Content-Type: application/json
+
+{"code":"<one-time-code>","codeVerifier":"<original-PKCE-verifier>","state":"<validated-app-state>"}
+```
+
+The exchange endpoint must consume the code exactly once, verify
+`BASE64URL(SHA-256(codeVerifier))` against the stored challenge, return the
+normal `{ "accessToken": "..." }` response, and set the refresh token as an
+HttpOnly cookie for the API. Never put access or refresh tokens in a deep link.
+The API must allow the Capacitor WebView origin with credentialed CORS and
+cookie settings suitable for its requests.
+
+The OAuth backend is maintained in the separate `FinanceTracker` repository.
+Deploy the mobile handoff endpoint and its database migration before enabling
+Android provider sign-in; the existing web callback remains unchanged.
+
 ## Frontend request and cookie handling
 
 For login and signup, send JSON with `Content-Type: application/json`. Password
