@@ -2433,7 +2433,6 @@ input:focus-visible {
   transform: scale(var(--scroll-zoom));
   transform-origin: center center;
   transition: transform .18s ease-out;
-  will-change: transform;
 }
 
 .dashboard-welcome {
@@ -2778,6 +2777,42 @@ input:focus-visible {
   color: #87948a;
   font-size: 8px;
   white-space: nowrap;
+}
+
+html,
+html * {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar,
+html *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track,
+html *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+html *::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  transition: background-color .2s ease;
+}
+
+html.scrollbars-visible,
+html.scrollbars-visible * {
+  scrollbar-color: #b8c8b9 transparent;
+}
+
+html.scrollbars-visible::-webkit-scrollbar-thumb,
+html.scrollbars-visible *::-webkit-scrollbar-thumb {
+  background-color: #b8c8b9;
 }
 
 .activity-weeks {
@@ -3314,6 +3349,16 @@ input:focus-visible {
   margin: -12px 0 20px;
   padding: 11px 14px;
   border-radius: 9px;
+  font-size: 11px;
+}
+
+.dashboard-inline-status {
+  margin: -12px 0 20px;
+  padding: 11px 14px;
+  border: 1px solid #dfe9df;
+  border-radius: 9px;
+  color: #385744;
+  background: #f2f7f1;
   font-size: 11px;
 }
 
@@ -4513,6 +4558,7 @@ input:focus-visible {
   }
 
   .dashboard-app[data-theme="dark"] .dashboard-inline-error,
+  .dashboard-app[data-theme="dark"] .dashboard-inline-status,
   .dashboard-app[data-theme="dark"] .profile-error-card > p,
   .dashboard-app[data-theme="dark"] .category-load-error {
     color: #e0aaa0;

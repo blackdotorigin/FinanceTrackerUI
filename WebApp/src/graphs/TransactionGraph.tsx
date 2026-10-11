@@ -1,18 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent } from "react";
+import type { PointerEvent } from "react";
+import { fetchTransactions } from "../api/transactions";
+import type { Transaction } from "../api/transactions";
+import { formatCurrency as formatMoney } from "../formatting/currency";
 import "./transaction-graph.css";
-
-type Transaction = {
-  id: string;
-  amount: number;
-  currency: string;
-  type: "INCOME" | "EXPENSE";
-  transactionDate: string;
-  description?: string | null;
-  category?: { id: string; name: string } | null;
-  subCategory?: { id: string; name: string } | null;
-  createdAt?: string;
-};
 
 type GraphRange = "week" | "month" | "year";
 type GraphType = "EXPENSE" | "INCOME";
@@ -34,51 +25,10 @@ const GRAPH = {
   left: 30,
   right: 970,
   top: 20,
-  bottom: 220,
+  bottom: 270,
 };
 
 const EMPTY_TRANSACTIONS: Transaction[] = [];
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function parseGraphTransactions(value: unknown): Transaction[] {
-  if (!Array.isArray(value)) {
-    throw new Error("The transaction graph response was not an array.");
-  }
-  return value.map((item): Transaction => {
-    if (
-      !isObject(item) ||
-      typeof item.id !== "string" ||
-      typeof item.amount !== "number" ||
-      !Number.isFinite(item.amount) ||
-      typeof item.currency !== "string" ||
-      (item.type !== "INCOME" && item.type !== "EXPENSE") ||
-      typeof item.transactionDate !== "string"
-    ) {
-      throw new Error("A transaction in the graph response was not in the expected format.");
-    }
-    const parseReference = (reference: unknown) => {
-      if (reference === null || reference === undefined) return null;
-      if (!isObject(reference) || typeof reference.id !== "string" || typeof reference.name !== "string") {
-        throw new Error("A transaction category in the graph response was invalid.");
-      }
-      return { id: reference.id, name: reference.name };
-    };
-    return {
-      id: item.id,
-      amount: item.amount,
-      currency: item.currency,
-      type: item.type,
-      transactionDate: item.transactionDate,
-      description: typeof item.description === "string" ? item.description : null,
-      category: parseReference(item.category),
-      subCategory: parseReference(item.subCategory),
-      createdAt: typeof item.createdAt === "string" ? item.createdAt : undefined,
-    };
-  });
-}
 
 function shiftDate(date: string, days: number) {
   const value = new Date(`${date}T00:00:00.000Z`);
@@ -118,18 +68,6 @@ function shiftPeriod(date: string, range: GraphRange, amount: number) {
   return periodStart(value.toISOString().slice(0, 10), range);
 }
 
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
-
 function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat(undefined, { ...options, timeZone: "UTC" })
     .format(new Date(`${date}T00:00:00.000Z`));
@@ -162,6 +100,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
   const [selectedDate, setSelectedDate] = useState(() => periodStart(today(), "month"));
   const [type, setType] = useState<GraphType>("EXPENSE");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
   const [loadedData, setLoadedData] = useState<{
     key: string;
     range: GraphRange;
@@ -188,13 +127,12 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
     setLoading(true);
     setError((current) => current?.key === requestKey ? null : current);
 
-    void apiFetch(`/api/v1/transactions/graph?period=${range}&date=${requestDate}`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Couldn’t load the ${formatPeriodLabel(requestDate, range)} graph (server returned ${response.status}).`);
-        }
-        return parseGraphTransactions(await response.json());
-      })
+    const { start, end } = periodBounds(requestDate, range);
+    void fetchTransactions(
+      apiFetch,
+      { from: start, to: end },
+      (status) => `Couldn’t load the ${formatPeriodLabel(requestDate, range)} graph (server returned ${status}).`,
+    )
       .then((result) => {
         if (isCurrentRequest) setLoadedData({ key: requestKey, range, date: requestDate, transactions: result });
       })
@@ -244,7 +182,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
     }
 
     transactions.forEach((transaction) => {
-      if (transaction.currency !== currency || transaction.type !== type) return;
+      if (transaction.type !== type) return;
       const key = graphRange === "year" ? transaction.transactionDate.slice(0, 7) : transaction.transactionDate;
       const point = byPeriod.get(key);
       if (!point) return;
@@ -253,7 +191,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
     });
 
     return Array.from(byPeriod.values());
-  }, [currency, graphDate, graphRange, transactions, type]);
+  }, [graphDate, graphRange, transactions, type]);
 
   useLayoutEffect(() => {
     if (
@@ -273,8 +211,11 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
   }, [currentError, isLoading, points]);
 
   const chartPoints = points;
-  const activePointIndex = Math.min(activeIndex ?? chartPoints.length - 1, chartPoints.length - 1);
+  const selectedPointIndex = pinnedIndex ?? activeIndex;
+  const activePointIndex = Math.min(selectedPointIndex ?? chartPoints.length - 1, chartPoints.length - 1);
   const activePoint = points[activePointIndex];
+  const showHoverCard = !isLoading && !currentError && !isAnimating &&
+    selectedPointIndex !== null && activePoint !== undefined;
   const maxAmount = Math.max(1, ...points.map((point) => point.amount));
   const xAt = (index: number) => chartPoints.length < 2
     ? (GRAPH.left + GRAPH.right) / 2
@@ -294,13 +235,25 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
       ? [...new Set([0, Math.round((chartPoints.length - 1) / 4), Math.round((chartPoints.length - 1) / 2), Math.round((chartPoints.length - 1) * 3 / 4), chartPoints.length - 1])]
       : chartPoints.map((_, index) => index).filter((index) => index % 2 === 0);
 
-  function updateActivePoint(event: PointerEvent<SVGSVGElement>) {
-    if (isLoading || currentError || isAnimating || chartPoints.length < 2) return;
+  function getPointIndexFromPointer(event: PointerEvent<SVGSVGElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
     const graphX = (event.clientX - bounds.left) / bounds.width * 1000;
     const ratio = Math.min(1, Math.max(0, (graphX - GRAPH.left) / (GRAPH.right - GRAPH.left)));
-    const nextIndex = Math.round(ratio * (chartPoints.length - 1));
+    return Math.round(ratio * (chartPoints.length - 1));
+  }
+
+  function updateActivePoint(event: PointerEvent<SVGSVGElement>) {
+    if (pinnedIndex !== null) return;
+    if (isLoading || currentError || isAnimating || chartPoints.length < 2) return;
+    const nextIndex = getPointIndexFromPointer(event);
     setActiveIndex((current) => current === nextIndex ? current : nextIndex);
+  }
+
+  function pinPoint(event: PointerEvent<SVGSVGElement>) {
+    if (isLoading || currentError || isAnimating || chartPoints.length < 2) return;
+    const nextIndex = getPointIndexFromPointer(event);
+    setPinnedIndex(nextIndex);
+    setActiveIndex(nextIndex);
   }
 
   return (
@@ -316,13 +269,13 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
             <button
               aria-pressed={type === "EXPENSE"}
               className={type === "EXPENSE" ? "is-active" : ""}
-              onClick={() => { setType("EXPENSE"); setActiveIndex(null); }}
+              onClick={() => { setType("EXPENSE"); setActiveIndex(null); setPinnedIndex(null); }}
               type="button"
             >Spending</button>
             <button
               aria-pressed={type === "INCOME"}
               className={type === "INCOME" ? "is-active" : ""}
-              onClick={() => { setType("INCOME"); setActiveIndex(null); }}
+              onClick={() => { setType("INCOME"); setActiveIndex(null); setPinnedIndex(null); }}
               type="button"
             >Income</button>
           </div>
@@ -332,7 +285,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
                 aria-pressed={range === option}
                 className={range === option ? "is-active" : ""}
                 key={option}
-                onClick={() => { setRange(option); setActiveIndex(null); }}
+                onClick={() => { setRange(option); setActiveIndex(null); setPinnedIndex(null); }}
                 type="button"
               >
                 {option[0].toUpperCase() + option.slice(1)}
@@ -343,7 +296,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
       </div>
 
       <p className="transaction-graph-data-note">
-        Chart totals use the transactions returned by this period’s API request (up to 10).
+        Chart totals use all transactions returned for this period.
         <span> Hover over the graph to inspect each point.</span>
       </p>
 
@@ -353,6 +306,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
           onClick={() => {
             setSelectedDate(shiftPeriod(requestDate, range, -1));
             setActiveIndex(null);
+            setPinnedIndex(null);
           }}
           type="button"
         >‹</button>
@@ -363,6 +317,7 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
           onClick={() => {
             setSelectedDate(shiftPeriod(requestDate, range, 1));
             setActiveIndex(null);
+            setPinnedIndex(null);
           }}
           type="button"
         >›</button>
@@ -375,9 +330,18 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
         <svg
           aria-label={`${type === "EXPENSE" ? "Spending" : "Income"} trend. Hover across the graph or focus and use arrow keys to inspect the values.`}
           className="transaction-graph-chart"
-          onBlur={() => setActiveIndex(null)}
-          onFocus={() => setActiveIndex((current) => current ?? points.length - 1)}
+          onBlur={() => {
+            if (pinnedIndex === null) setActiveIndex(null);
+          }}
+          onFocus={() => setActiveIndex((current) => pinnedIndex ?? current ?? points.length - 1)}
           onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setPinnedIndex(null);
+              setActiveIndex(null);
+              return;
+            }
+            setPinnedIndex(null);
             if (event.key === "ArrowRight") {
               event.preventDefault();
               setActiveIndex((current) => Math.min(chartPoints.length - 1, (current ?? chartPoints.length - 1) + 1));
@@ -392,12 +356,15 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
               setActiveIndex(chartPoints.length - 1);
             }
           }}
-          onPointerLeave={() => setActiveIndex(null)}
+          onPointerDown={pinPoint}
+          onPointerLeave={() => {
+            if (pinnedIndex === null) setActiveIndex(null);
+          }}
           onPointerMove={updateActivePoint}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           tabIndex={isLoading || currentError || isAnimating ? -1 : 0}
-          viewBox="0 0 1000 270"
+          viewBox="0 0 1000 320"
           aria-busy={isLoading || isAnimating}
         >
           <defs>
@@ -418,11 +385,11 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
             pathLength={1}
           />
           {tickIndexes.map((index) => (
-            <text className="transaction-graph-tick" key={chartPoints[index]?.key} textAnchor="middle" x={xAt(index)} y="255">
+            <text className="transaction-graph-tick" key={chartPoints[index]?.key} textAnchor="middle" x={xAt(index)} y="305">
               {chartPoints[index]?.label}
             </text>
           ))}
-          {activePoint && !isLoading && !currentError && !isAnimating && (
+          {selectedPointIndex !== null && activePoint && !isLoading && !currentError && !isAnimating && (
             <>
               <line className="transaction-graph-cursor" x1={xAt(activePointIndex)} x2={xAt(activePointIndex)} y1={GRAPH.top} y2={GRAPH.bottom} />
               <circle className="transaction-graph-pointer-halo" cx={xAt(activePointIndex)} cy={yAt(activePoint.amount / maxAmount)} r="9" />
@@ -441,40 +408,45 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
             <span>{currentError}</span>
           </div>
         )}
-        {!isLoading && !currentError && !isAnimating && activeIndex !== null && activePoint && (
-          <aside
-            aria-live="polite"
-            className={`transaction-graph-hover-card${yAt(activePoint.amount / maxAmount) > GRAPH.bottom * .52 ? " is-above-point" : ""}`}
-            style={{
-              "--point-x": `${xAt(activePointIndex) / 10}%`,
-              "--point-y": `${yAt(activePoint.amount / maxAmount) / 2.7}%`,
-            } as CSSProperties}
-          >
-            <span className="transaction-graph-hover-date">{activePoint.dateLabel}</span>
-            <strong className="transaction-graph-hover-total">{formatMoney(activePoint.amount, currency)}</strong>
-            <small className="transaction-graph-hover-caption">
-              {type === "EXPENSE" ? "spent" : "received"} · {activePoint.transactions.length} {activePoint.transactions.length === 1 ? "transaction" : "transactions"}
-            </small>
-            {activePoint.transactions.length > 0 ? (
-              <ul>
-                {[...activePoint.transactions]
-                  .sort((first, second) => second.amount - first.amount)
-                  .slice(0, 3)
-                  .map((transaction) => (
-                  <li key={transaction.id}>
-                    <span>
-                      <strong>{transaction.description || transaction.category?.name || (type === "EXPENSE" ? "Expense" : "Income")}</strong>
-                      <small>{transaction.subCategory?.name || transaction.category?.name || (type === "EXPENSE" ? "Expense" : "Income")}</small>
-                    </span>
-                    <b>{formatMoney(transaction.amount, currency)}</b>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No {type === "EXPENSE" ? "spending" : "income"} recorded.</p>
-            )}
-          </aside>
-        )}
+        <aside aria-live="polite" className="transaction-graph-details">
+          {showHoverCard && activePoint ? (
+            <>
+              <div className="transaction-graph-details-heading">
+                <div>
+                  <span className="transaction-graph-details-date">{activePoint.dateLabel}</span>
+                  <small className="transaction-graph-details-caption">
+                    {type === "EXPENSE" ? "Spent" : "Received"} · {activePoint.transactions.length} {activePoint.transactions.length === 1 ? "transaction" : "transactions"}
+                  </small>
+                </div>
+                <strong className="transaction-graph-details-total">{formatMoney(activePoint.amount, currency)}</strong>
+              </div>
+              {activePoint.transactions.length > 0 ? (
+                <ul>
+                  {[...activePoint.transactions]
+                    .sort((first, second) => second.amount - first.amount)
+                    .slice(0, 3)
+                    .map((transaction) => (
+                    <li className="transaction-graph-details-row" key={transaction.id}>
+                      <span>
+                        <strong>{transaction.description || transaction.category?.name || (type === "EXPENSE" ? "Expense" : "Income")}</strong>
+                        <small>{transaction.subCategory?.name || transaction.category?.name || (type === "EXPENSE" ? "Expense" : "Income")}</small>
+                      </span>
+                      <b>{formatMoney(transaction.amount, currency)}</b>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="transaction-graph-details-empty">
+                  No {type === "EXPENSE" ? "spending" : "income"} recorded for this date.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="transaction-graph-details-placeholder">
+              Hover over a point to explore that day’s activity.
+            </p>
+          )}
+        </aside>
       </div>
       {!isLoading && !currentError && transactions.length === 0 && (
         <p className="transaction-graph-status">No transactions returned for this {range}.</p>

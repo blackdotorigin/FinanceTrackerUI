@@ -1,35 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { fetchTransactions } from "../api/transactions";
+import type { PaymentMode, Transaction, TransactionFilters, TransactionType } from "../api/transactions";
+import { formatCurrency as formatMoney } from "../formatting/currency";
 import "./advanced-transactions.css";
-
-type TransactionType = "INCOME" | "EXPENSE";
-
-type Transaction = {
-  id: string;
-  amount: number;
-  currency: string;
-  type: TransactionType;
-  transactionDate: string;
-  description?: string | null;
-  category?: { id: string; name: string };
-  subCategory?: { id: string; name: string };
-};
 
 type Category = {
   id: string;
   name: string;
   type: TransactionType;
   icon?: string;
+  subCategories?: { id: string; name: string }[];
 };
 
 type Props = {
+  apiFetch: (path: string, init?: RequestInit) => Promise<Response>;
   categories: Category[];
   categoriesError: string;
   categoriesLoading: boolean;
   currency: string;
   onRetryCategories: () => void;
   onSelectTransaction: (transaction: Transaction) => void;
-  transactions: Transaction[];
+  revision: number;
 };
 
 const CATEGORY_COLORS = [
@@ -86,18 +78,6 @@ function CategoryIcon({ category }: { category: Category }) {
   );
 }
 
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
-
 function formatDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
@@ -109,26 +89,107 @@ function formatDate(date: string) {
 }
 
 export default function AdvancedTransactions({
+  apiFetch,
   categories,
   categoriesError,
   categoriesLoading,
   currency,
   onRetryCategories,
   onSelectTransaction,
-  transactions,
+  revision,
 }: Props) {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState("");
   const [type, setType] = useState<"ALL" | TransactionType>("ALL");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | "">("");
   const [categoryId, setCategoryId] = useState("all");
+  const [subCategoryId, setSubCategoryId] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState("");
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    const currentRequest = ++requestId.current;
+    const validFrom = fromDate ? new Date(`${fromDate}T00:00:00.000Z`) : null;
+    const validTo = toDate ? new Date(`${toDate}T00:00:00.000Z`) : null;
+    if (fromDate !== "" && (!validFrom || Number.isNaN(validFrom.getTime()))) {
+      setTransactionsError("Enter a valid start date.");
+      setTransactionsLoading(false);
+      setTransactions([]);
+      return;
+    }
+    if (toDate !== "" && (!validTo || Number.isNaN(validTo.getTime()))) {
+      setTransactionsError("Enter a valid end date.");
+      setTransactionsLoading(false);
+      setTransactions([]);
+      return;
+    }
+    if (Boolean(fromDate) !== Boolean(toDate)) {
+      setTransactionsError("Choose both a start date and an end date to filter by date.");
+      setTransactionsLoading(false);
+      setTransactions([]);
+      return;
+    }
+    if (validFrom && validTo) {
+      const dayCount = (validTo.getTime() - validFrom.getTime()) / 86_400_000 + 1;
+      if (dayCount < 1) {
+        setTransactionsError("The start date must be on or before the end date.");
+        setTransactionsLoading(false);
+        setTransactions([]);
+        return;
+      }
+      if (dayCount > 366) {
+        setTransactionsError("Choose a date range of 366 days or less.");
+        setTransactionsLoading(false);
+        setTransactions([]);
+        return;
+      }
+    }
+
+    const filters: TransactionFilters = {
+      ...(type !== "ALL" ? { type } : {}),
+      ...(paymentMode ? { paymentMode } : {}),
+      ...(categoryId !== "all" ? { categoryId } : {}),
+      ...(subCategoryId !== "all" ? { subCategoryId } : {}),
+      ...(fromDate && toDate ? { from: fromDate, to: toDate } : {}),
+    };
+    setTransactionsLoading(true);
+    setTransactionsError("");
+    setTransactions([]);
+    void fetchTransactions(
+      apiFetch,
+      filters,
+      (status) => status === 401
+        ? "Your session has expired. Please sign in again."
+        : `We couldn’t load matching transactions (server returned ${status}).`,
+    ).then((result) => {
+      if (currentRequest === requestId.current) setTransactions(result);
+    }).catch((caught: unknown) => {
+      if (currentRequest === requestId.current) {
+        setTransactionsError(
+          caught instanceof Error
+            ? caught.message
+            : "We couldn’t load matching transactions. Please try again.",
+        );
+      }
+    }).finally(() => {
+      if (currentRequest === requestId.current) setTransactionsLoading(false);
+    });
+
+    return () => {
+      if (currentRequest === requestId.current) requestId.current += 1;
+    };
+  }, [apiFetch, categoryId, fromDate, paymentMode, revision, subCategoryId, toDate, type]);
 
   const filteredTransactions = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
     return transactions.filter((transaction) => {
-      if (transaction.currency !== currency) return false;
       if (type !== "ALL" && transaction.type !== type) return false;
       if (categoryId !== "all" && transaction.category?.id !== categoryId) return false;
+      if (subCategoryId !== "all" && transaction.subCategory?.id !== subCategoryId) return false;
+      if (paymentMode && transaction.paymentMode !== paymentMode) return false;
       if (fromDate && transaction.transactionDate < fromDate) return false;
       if (toDate && transaction.transactionDate > toDate) return false;
       return !term || [
@@ -137,7 +198,7 @@ export default function AdvancedTransactions({
         transaction.subCategory?.name,
       ].some((value) => value?.toLocaleLowerCase().includes(term));
     });
-  }, [categoryId, currency, fromDate, search, toDate, transactions, type]);
+  }, [categoryId, fromDate, paymentMode, search, subCategoryId, toDate, transactions, type]);
 
   const expenseTotal = filteredTransactions
     .filter((transaction) => transaction.type === "EXPENSE")
@@ -146,11 +207,7 @@ export default function AdvancedTransactions({
     .filter((transaction) => transaction.type === "INCOME")
     .reduce((sum, transaction) => sum + transaction.amount, 0);
   const categoryCounts = transactions.reduce<Record<string, number>>((counts, transaction) => {
-    if (
-      transaction.currency === currency &&
-      (type === "ALL" || transaction.type === type) &&
-      transaction.category?.id
-    ) {
+    if ((type === "ALL" || transaction.type === type) && transaction.category?.id) {
       counts[transaction.category.id] = (counts[transaction.category.id] ?? 0) + 1;
     }
     return counts;
@@ -166,7 +223,9 @@ export default function AdvancedTransactions({
   function clearFilters() {
     setSearch("");
     setType("ALL");
+    setPaymentMode("");
     setCategoryId("all");
+    setSubCategoryId("all");
     setFromDate("");
     setToDate("");
   }
@@ -205,6 +264,8 @@ export default function AdvancedTransactions({
               <path d="m16 16 4.5 4.5" />
             </svg>
             <input
+              aria-label="Search transaction descriptions"
+              aria-describedby="advanced-search-help"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search a merchant, note, or category…"
               type="search"
@@ -222,6 +283,33 @@ export default function AdvancedTransactions({
             </label>
           </div>
         </div>
+        <p className="advanced-search-help" id="advanced-search-help">
+          Text matches the transactions returned by the other filters. Set a date range to search older activity.
+        </p>
+        <div className="advanced-extra-filters">
+          <label>
+            <span>Payment method</span>
+            <select aria-label="Payment method" onChange={(event) => setPaymentMode(event.target.value as PaymentMode | "")} value={paymentMode}>
+              <option value="">All payment methods</option>
+              <option value="CASH">Cash</option>
+              <option value="CREDIT">Credit</option>
+              <option value="BANK_ACCOUNT">Bank account</option>
+            </select>
+          </label>
+          <label>
+            <span>Subcategory</span>
+            <select aria-label="Subcategory" onChange={(event) => setSubCategoryId(event.target.value)} value={subCategoryId}>
+              <option value="all">All subcategories</option>
+              {categories
+                .filter((category) => categoryId === "all" || category.id === categoryId)
+                .flatMap((category) => (category.subCategories ?? []).map((subCategory) => (
+                  <option key={subCategory.id} value={subCategory.id}>{subCategory.name}</option>
+                )))}
+            </select>
+          </label>
+        </div>
+        {transactionsLoading && <p className="advanced-categories-status" role="status">Loading matching transactions…</p>}
+        {transactionsError && <p className="advanced-categories-error" role="alert">{transactionsError}</p>}
         <div className="advanced-type-filters" role="group" aria-label="Transaction type">
           {(["ALL", "EXPENSE", "INCOME"] as const).map((option) => (
             <button
@@ -232,6 +320,7 @@ export default function AdvancedTransactions({
                 setType(option);
                 if (categoryId !== "all" && !categories.some((category) => category.id === categoryId && (option === "ALL" || category.type === option))) {
                   setCategoryId("all");
+                  setSubCategoryId("all");
                 }
               }}
               type="button"
@@ -245,7 +334,7 @@ export default function AdvancedTransactions({
             <span className="advanced-category-title">Categories</span>
             <small>{type === "ALL" ? "Your 3 most-used categories" : `Your ${Math.min(6, visibleCategories.length)} most-used ${type === "INCOME" ? "income" : "spending"} categories`}</small>
           </div>
-          {(search || type !== "ALL" || categoryId !== "all" || fromDate || toDate) && (
+          {(search || type !== "ALL" || paymentMode || categoryId !== "all" || subCategoryId !== "all" || fromDate || toDate) && (
             <button onClick={clearFilters} type="button">Clear filters</button>
           )}
         </div>
@@ -258,7 +347,10 @@ export default function AdvancedTransactions({
                 className={`advanced-category-chip${categoryId === category.id ? " is-active" : ""}`}
                 style={{ "--category-tint": background, "--category-ink": color } as CSSProperties}
                 key={category.id}
-                onClick={() => setCategoryId(category.id)}
+                onClick={() => {
+                  setCategoryId(category.id);
+                  setSubCategoryId("all");
+                }}
                 type="button"
               >
                 <span className="advanced-category-symbol" aria-hidden="true">
@@ -289,14 +381,16 @@ export default function AdvancedTransactions({
           <h2>Transactions</h2>
           <span>{filteredTransactions.length} {filteredTransactions.length === 1 ? "entry" : "entries"}</span>
         </div>
-        {filteredTransactions.length ? (
+        {transactionsLoading ? (
+          <p className="advanced-categories-status" role="status">Searching transactions…</p>
+        ) : transactionsError ? null : filteredTransactions.length ? (
           <div className="advanced-transaction-list">
             {filteredTransactions.map((transaction, index) => {
               const category = categories.find((item) => item.id === transaction.category?.id);
               const [background, color] = CATEGORY_COLORS[(category ? categories.indexOf(category) : index) % CATEGORY_COLORS.length];
               return (
                 <button
-                  aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, transaction.currency)}, ${formatDate(transaction.transactionDate)}. View details.`}
+                  aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. View details.`}
                   className="advanced-transaction-row"
                   key={transaction.id}
                   onClick={() => onSelectTransaction(transaction)}
@@ -311,7 +405,7 @@ export default function AdvancedTransactions({
                   </span>
                   <span className="advanced-transaction-date">{formatDate(transaction.transactionDate)}</span>
                   <strong className={`advanced-transaction-amount is-${transaction.type.toLowerCase()}`}>
-                    {transaction.type === "INCOME" ? "+" : "−"}{formatMoney(transaction.amount, transaction.currency)}
+                    {transaction.type === "INCOME" ? "+" : "−"}{formatMoney(transaction.amount, currency)}
                   </strong>
                 </button>
               );

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AdminPanel from "./admin/AdminPanel";
+import { API_BASE_URL } from "./api/apiBaseUrl";
+import { fetchTransactions } from "./api/transactions";
+import type { PaymentMode, Transaction, TransactionFilters, TransactionType } from "./api/transactions";
 import TransactionGraph from "./graphs/TransactionGraph";
+import { formatCurrency as formatMoney } from "./formatting/currency";
 import AdvancedTransactions from "./transactions/AdvancedTransactions";
 import TransactionDetails from "./transactions/TransactionDetails";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://financetracker-iulg.onrender.com"
-).replace(/\/+$/, "");
-const PAGE_SIZE = 100;
 let dashboardRefreshRequest: Promise<string> | null = null;
 
 type User = {
@@ -19,31 +19,12 @@ type User = {
   defaultCurrency?: string;
 };
 
-type TransactionType = "INCOME" | "EXPENSE";
-
-type Transaction = {
-  id: string;
-  amount: number;
-  currency: string;
-  type: TransactionType;
-  transactionDate: string;
-  description?: string | null;
-  category?: { id: string; name: string };
-  subCategory?: { id: string; name: string };
-  createdAt?: string;
-};
-
 type Category = {
   id: string;
   name: string;
   type: TransactionType;
   icon?: string;
   subCategories?: { id: string; name: string }[];
-};
-
-type TransactionPage = {
-  content: Transaction[];
-  page?: { number?: number; size?: number; totalPages?: number; totalElements?: number };
 };
 
 type UserActivityDay = {
@@ -62,6 +43,7 @@ type UserActivity = {
 type TransactionForm = {
   amount: string;
   type: TransactionType;
+  paymentMode: PaymentMode | "";
   transactionDate: string;
   categoryId: string;
   subCategoryId: string;
@@ -77,56 +59,6 @@ function getErrorMessage(status: number, action: string) {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function parseTransactionPage(value: unknown): TransactionPage {
-  if (!isObject(value) || !Array.isArray(value.content)) {
-    throw new Error("The transactions response was not in the expected format.");
-  }
-  const content = value.content.map((item): Transaction => {
-    if (
-      !isObject(item) ||
-      typeof item.id !== "string" ||
-      typeof item.amount !== "number" ||
-      !Number.isFinite(item.amount) ||
-      typeof item.currency !== "string" ||
-      (item.type !== "INCOME" && item.type !== "EXPENSE") ||
-      typeof item.transactionDate !== "string"
-    ) {
-      throw new Error("A transaction in the server response was not in the expected format.");
-    }
-    const parseReference = (reference: unknown) => {
-      if (!isObject(reference) || typeof reference.id !== "string" || typeof reference.name !== "string") {
-        return undefined;
-      }
-      return { id: reference.id, name: reference.name };
-    };
-    return {
-      id: item.id,
-      amount: item.amount,
-      currency: item.currency,
-      type: item.type,
-      transactionDate: item.transactionDate,
-      description: typeof item.description === "string" ? item.description : null,
-      category: parseReference(item.category),
-      subCategory: parseReference(item.subCategory),
-      createdAt: typeof item.createdAt === "string" ? item.createdAt : undefined,
-    };
-  });
-  const metadata = isObject(value.page) ? value.page : undefined;
-  return {
-    content,
-    page: metadata
-      ? {
-          totalPages:
-            typeof metadata.totalPages === "number" ? metadata.totalPages : undefined,
-          totalElements:
-            typeof metadata.totalElements === "number" ? metadata.totalElements : undefined,
-          number: typeof metadata.number === "number" ? metadata.number : undefined,
-          size: typeof metadata.size === "number" ? metadata.size : undefined,
-        }
-      : undefined,
-  };
 }
 
 function parseUserActivity(value: unknown): UserActivity {
@@ -294,18 +226,6 @@ function parseCategories(value: unknown): Category[] {
   });
 }
 
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
-
 function formatDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
@@ -355,12 +275,14 @@ function useScrollZoom(loading: boolean, activeView: string) {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const center = window.innerHeight * 0.48;
-        for (const element of elements) {
+        const scales = elements.map((element) => {
           const rect = element.getBoundingClientRect();
           const distance = Math.abs(rect.top + rect.height / 2 - center);
-          const scale = Math.max(0.94, 1.025 - (distance / window.innerHeight) * 0.1);
-          element.style.setProperty("--scroll-zoom", scale.toFixed(3));
-        }
+          return Math.max(0.94, 1.025 - (distance / window.innerHeight) * 0.1);
+        });
+        elements.forEach((element, index) => {
+          element.style.setProperty("--scroll-zoom", scales[index].toFixed(3));
+        });
       });
     };
 
@@ -442,8 +364,10 @@ export default function FinanceDashboard({
   const [profileName, setProfileName] = useState("");
   const [profileCurrency, setProfileCurrency] = useState("");
   const transactionsStarted = useRef(false);
+  const transactionsRequestId = useRef(0);
   const profileStarted = useRef(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionRevision, setTransactionRevision] = useState(0);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [userActivity, setUserActivity] = useState<UserActivity | null>(null);
   const [currentYearActivity, setCurrentYearActivity] = useState<UserActivity | null>(null);
@@ -459,6 +383,7 @@ export default function FinanceDashboard({
   const [categoriesError, setCategoriesError] = useState("");
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshingTransactions, setRefreshingTransactions] = useState(false);
   const [transactionsLoaded, setTransactionsLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -472,6 +397,7 @@ export default function FinanceDashboard({
   const [form, setForm] = useState<TransactionForm>({
     amount: "",
     type: "EXPENSE",
+    paymentMode: "",
     transactionDate: getTodayInputValue(),
     categoryId: "",
     subCategoryId: "",
@@ -481,6 +407,11 @@ export default function FinanceDashboard({
   const [search, setSearch] = useState("");
   const [reportTab, setReportTab] = useState<ReportTab>("monthly");
   const [reportMonth, setReportMonth] = useState(() => getMonthValue());
+  const [reportTransactions, setReportTransactions] = useState<Transaction[]>([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [reportReload, setReportReload] = useState(0);
+  const reportRequestId = useRef(0);
   const [reportCategoryType, setReportCategoryType] = useState<TransactionType>("EXPENSE");
   const [hoveredReportCategoryId, setHoveredReportCategoryId] = useState<string | null>(null);
   const [budgetLimits, setBudgetLimits] = useState<Record<string, string>>({});
@@ -575,6 +506,7 @@ export default function FinanceDashboard({
       const send = (token: string) =>
         fetch(`${API_BASE_URL}${path}`, {
           ...init,
+          cache: init.cache ?? "no-store",
           credentials: "include",
           headers: {
             ...init.headers,
@@ -626,57 +558,83 @@ export default function FinanceDashboard({
     [onAccessTokenChange, onLogout],
   );
 
-  const loadTransactions = useCallback(async () => {
-    const query = `?page=0&size=${PAGE_SIZE}&sortBy=DATE&direction=DESC`;
-    const firstResponse = await apiFetch(`/api/v1/transactions${query}`);
-    if (!firstResponse.ok) {
-      throw new Error(getErrorMessage(firstResponse.status, "load your transactions"));
+  const loadTransactions = useCallback(async (
+    requestId = ++transactionsRequestId.current,
+    filters: TransactionFilters = {},
+  ) => {
+    const allTransactions = await fetchTransactions(
+      apiFetch,
+      filters,
+      (status) => getErrorMessage(status, "load your transactions"),
+    );
+    if (requestId === transactionsRequestId.current) {
+      setTransactions(allTransactions);
+      setTotalTransactions(allTransactions.length);
     }
-    const firstPage = parseTransactionPage(await firstResponse.json());
-    const pageCount = Math.max(1, firstPage.page?.totalPages ?? 1);
-    const remaining: Transaction[][] = [];
-    for (let start = 1; start < pageCount; start += 4) {
-      const pages = await Promise.all(
-        Array.from({ length: Math.min(4, pageCount - start) }, (_, index) => start + index).map(
-          async (pageNumber) => {
-            const response = await apiFetch(
-              `/api/v1/transactions?page=${pageNumber}&size=${PAGE_SIZE}&sortBy=DATE&direction=DESC`,
-            );
-            if (!response.ok) {
-              throw new Error(getErrorMessage(response.status, "load your transactions"));
-            }
-            return parseTransactionPage(await response.json()).content;
-          },
-        ),
-      );
-      remaining.push(...pages);
-    }
-    const allTransactions = [firstPage.content, ...remaining].flat();
-    setTransactions(allTransactions);
-    setTotalTransactions(firstPage.page?.totalElements ?? allTransactions.length);
+    return allTransactions;
   }, [apiFetch]);
 
-  const refreshTransactions = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (activeNav !== "reports") return;
+    const currentRequest = ++reportRequestId.current;
+    const from = `${getMonthOffset(reportMonth, -5)}-01`;
+    const [year, month] = reportMonth.split("-").map(Number);
+    const to = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    setReportLoading(true);
+    setReportError("");
+    setReportTransactions([]);
+    void fetchTransactions(
+      apiFetch,
+      { from, to },
+      (status) => getErrorMessage(status, "load report transactions"),
+    ).then((result) => {
+      if (currentRequest === reportRequestId.current) setReportTransactions(result);
+    }).catch((caught: unknown) => {
+      if (currentRequest === reportRequestId.current) {
+        setReportError(
+          caught instanceof Error
+            ? caught.message
+            : "We couldn’t load report transactions. Please try again.",
+        );
+      }
+    }).finally(() => {
+      if (currentRequest === reportRequestId.current) setReportLoading(false);
+    });
+    return () => {
+      if (currentRequest === reportRequestId.current) reportRequestId.current += 1;
+    };
+  }, [activeNav, apiFetch, reportMonth, reportReload]);
+
+  const refreshTransactions = useCallback(async (blocking = false) => {
+    const requestId = ++transactionsRequestId.current;
+    if (blocking) setLoading(true);
+    else setRefreshingTransactions(true);
     setLoadError("");
+    setTransactions([]);
+    setTotalTransactions(0);
     try {
-      await loadTransactions();
-      setTransactionsLoaded(true);
+      await loadTransactions(requestId);
+      if (requestId === transactionsRequestId.current) setTransactionsLoaded(true);
     } catch (caught) {
-      setLoadError(
-        caught instanceof Error
-          ? caught.message
-          : "We couldn’t load your transactions. Please try again.",
-      );
+      if (requestId === transactionsRequestId.current) {
+        setLoadError(
+          caught instanceof Error
+            ? caught.message
+            : "We couldn’t load your transactions. Please try again.",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (requestId === transactionsRequestId.current) {
+        setLoading(false);
+        setRefreshingTransactions(false);
+      }
     }
   }, [loadTransactions]);
 
   useEffect(() => {
     if (transactionsStarted.current) return;
     transactionsStarted.current = true;
-    void refreshTransactions();
+    void refreshTransactions(true);
   }, [refreshTransactions]);
 
   const loadUserActivity = useCallback(async (year: string) => {
@@ -781,8 +739,7 @@ export default function FinanceDashboard({
 
   const currency = user?.defaultCurrency || transactions[0]?.currency || "INR";
   const totals = useMemo(() => {
-    const currencyTransactions = transactions.filter((item) => item.currency === currency);
-    return currencyTransactions.reduce(
+    return transactions.reduce(
       (result, transaction) => {
         if (transaction.type === "INCOME") result.income += transaction.amount;
         else result.expenses += transaction.amount;
@@ -790,11 +747,10 @@ export default function FinanceDashboard({
       },
       { income: 0, expenses: 0 },
     );
-  }, [currency, transactions]);
+  }, [transactions]);
 
   const reportData = useMemo(() => {
-    const currencyTransactions = transactions.filter((transaction) => transaction.currency === currency);
-    const selectedMonthTransactions = currencyTransactions.filter((transaction) =>
+    const selectedMonthTransactions = reportTransactions.filter((transaction) =>
       transaction.transactionDate.startsWith(reportMonth),
     );
     const totalsFor = (items: Transaction[]) =>
@@ -838,7 +794,7 @@ export default function FinanceDashboard({
     const trends = trendMonths.map((month) => ({
       month,
       label: formatMonth(month, { month: "short" }),
-      ...totalsFor(currencyTransactions.filter((transaction) => transaction.transactionDate.startsWith(month))),
+      ...totalsFor(reportTransactions.filter((transaction) => transaction.transactionDate.startsWith(month))),
     }));
     const trendTotals = trends.reduce(
       (result, month) => ({
@@ -856,7 +812,7 @@ export default function FinanceDashboard({
       averageMonthlySpend: trendTotals.expenses / trends.length,
       averageMonthlyIncome: trendTotals.income / trends.length,
       expenseCategories: Array.from(
-        currencyTransactions.reduce<Map<string, { id: string; name: string; amount: number }>>(
+        reportTransactions.reduce<Map<string, { id: string; name: string; amount: number }>>(
           (result, transaction) => {
             if (transaction.type !== "EXPENSE") return result;
             const id = transaction.category?.id || "uncategorized";
@@ -876,7 +832,7 @@ export default function FinanceDashboard({
         ).values(),
       ).sort((first, second) => second.amount - first.amount),
     };
-  }, [currency, reportCategoryType, reportMonth, transactions]);
+  }, [reportCategoryType, reportMonth, reportTransactions]);
 
   const activityCalendar = useMemo(() => {
     if (!userActivity) return null;
@@ -980,6 +936,7 @@ export default function FinanceDashboard({
     setProfileOpen(false);
     if (section === "profile") void loadProfile();
     if (section === "transactions") void loadCategories();
+    if (section === "overview") void refreshTransactions();
     if (section === "overview") {
       requestAnimationFrame(() => {
         document.getElementById("overview")?.scrollIntoView({
@@ -995,6 +952,15 @@ export default function FinanceDashboard({
   function openTransactionForm() {
     setEditingTransactionId(null);
     setSelectedTransaction(null);
+    setForm({
+      amount: "",
+      type: "EXPENSE",
+      paymentMode: "",
+      transactionDate: getTodayInputValue(),
+      categoryId: "",
+      subCategoryId: "",
+      description: "",
+    });
     setFormOpen(true);
     setFormError("");
     void loadCategories();
@@ -1004,6 +970,7 @@ export default function FinanceDashboard({
     setForm({
       amount: String(transaction.amount),
       type: transaction.type,
+      paymentMode: transaction.paymentMode || "",
       transactionDate: transaction.transactionDate,
       categoryId: transaction.category?.id || "",
       subCategoryId: transaction.subCategory?.id || "",
@@ -1052,11 +1019,16 @@ export default function FinanceDashboard({
         throw new Error(getErrorMessage(response.status, "save your profile"));
       }
       const updated = parseUser(await response.json());
+      const currencyChanged = (user.defaultCurrency || "INR") !== defaultCurrency;
       setUser(updated);
       setProfileName(updated.fullName);
       setProfileCurrency(updated.defaultCurrency || defaultCurrency);
       setProfileEditing(false);
-      setNotice("Your profile has been updated.");
+      setNotice(
+        currencyChanged
+          ? `Your currency is now ${updated.defaultCurrency || defaultCurrency}. Existing amounts were not converted.`
+          : "Your profile has been updated.",
+      );
     } catch (caught) {
       setProfileFormError(
         caught instanceof Error
@@ -1078,10 +1050,11 @@ export default function FinanceDashboard({
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
+      !form.paymentMode ||
       !category ||
       category.type !== form.type
     ) {
-      setFormError("Enter an amount greater than zero and choose a category.");
+      setFormError("Enter an amount, choose a payment method, and choose a category.");
       return;
     }
 
@@ -1098,6 +1071,7 @@ export default function FinanceDashboard({
           amount,
           currency,
           type: form.type,
+          paymentMode: form.paymentMode,
           transactionDate: form.transactionDate,
           categoryId: form.categoryId,
           subCategoryId: form.subCategoryId || null,
@@ -1109,11 +1083,13 @@ export default function FinanceDashboard({
       }
       await response.json();
       await loadTransactions();
+      setTransactionRevision((revision) => revision + 1);
       const wasEditing = Boolean(editingTransactionId);
       setEditingTransactionId(null);
       setForm({
         amount: "",
         type: "EXPENSE",
+        paymentMode: "",
         transactionDate: getTodayInputValue(),
         categoryId: "",
         subCategoryId: "",
@@ -1167,7 +1143,7 @@ export default function FinanceDashboard({
           <p className="eyebrow">A little pause</p>
           <h1>Your overview couldn’t load.</h1>
           <p>{loadError}</p>
-          <button className="dashboard-primary-button" onClick={() => void refreshTransactions()} type="button">
+          <button className="dashboard-primary-button" onClick={() => void refreshTransactions(true)} type="button">
             Try again <Icon name="arrow" />
           </button>
           <button className="dashboard-text-button" onClick={onLogout} type="button">Back to sign in</button>
@@ -1330,6 +1306,12 @@ export default function FinanceDashboard({
         </header>
 
         <main className={`dashboard-content ${activeNav === "profile" ? "is-profile-page" : ""}`}>
+          {refreshingTransactions && (
+            <p className="dashboard-inline-status" role="status">
+              Refreshing your latest transactions…
+            </p>
+          )}
+          {loadError && <p className="dashboard-inline-error" role="alert">{loadError}</p>}
           {activeNav === "admin" && isAdmin ? (
             <AdminPanel apiFetch={apiFetch} currentUserId={adminUserId} />
           ) : activeNav === "profile" ? (
@@ -1400,7 +1382,7 @@ export default function FinanceDashboard({
                       />
                     </label>
                     <p className="profile-edit-help">
-                      Email and username can’t be changed from this screen.
+                      Changing the default currency relabels transaction amounts without converting them. Email and username can’t be changed from this screen.
                     </p>
                     {profileFormError && <p className="form-error" role="alert">{profileFormError}</p>}
                     <div className="profile-edit-actions">
@@ -1438,13 +1420,14 @@ export default function FinanceDashboard({
             </section>
           ) : activeNav === "transactions" ? (
             <AdvancedTransactions
+              apiFetch={apiFetch}
               categories={categories}
               categoriesError={categoriesError}
               categoriesLoading={categoriesLoading}
               currency={currency}
               onRetryCategories={() => void loadCategories()}
               onSelectTransaction={setSelectedTransaction}
-              transactions={transactions}
+              revision={transactionRevision}
             />
           ) : activeNav === "reports" ? (
             <section className="dashboard-subpage reports-page" aria-labelledby="reports-page-title">
@@ -1493,6 +1476,13 @@ export default function FinanceDashboard({
                   </button>
                 ))}
               </div>
+
+              {reportLoading && <p className="dashboard-inline-status" role="status">Loading transactions for this report range…</p>}
+              {reportError && (
+                <p className="dashboard-inline-error" role="alert">
+                  {reportError} <button onClick={() => setReportReload((value) => value + 1)} type="button">Retry</button>
+                </p>
+              )}
 
               {reportTab === "monthly" ? (
                 <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-monthly">
@@ -1878,9 +1868,7 @@ export default function FinanceDashboard({
           ) : activeNav === "graphs" ? (
             <section className="dashboard-subpage graphs-page" aria-labelledby="graphs-page-title">
               <div className="subpage-heading graph-page-heading">
-                <p className="eyebrow">Follow your money</p>
                 <h1 id="graphs-page-title">Spending, in motion.</h1>
-                <p>Trace each day, week, or year and see exactly where the numbers came from.</p>
               </div>
               <TransactionGraph
                 currency={currency}
@@ -1906,7 +1894,6 @@ export default function FinanceDashboard({
             </button>
           </section>
 
-          {loadError && <p className="dashboard-inline-error" role="alert">{loadError}</p>}
           {notice && (
             <div className="dashboard-toast" role="status" aria-live="polite">
               <span className="toast-check" aria-hidden="true">✓</span>
@@ -2224,7 +2211,7 @@ export default function FinanceDashboard({
                   <tbody>
                     {visibleTransactions.map((transaction) => (
                       <tr
-                        aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, transaction.currency)}, ${formatDate(transaction.transactionDate)}. Press Enter to view details.`}
+                        aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. Press Enter to view details.`}
                         key={transaction.id}
                         onClick={() => setSelectedTransaction(transaction)}
                         onKeyDown={(event) => {
@@ -2249,7 +2236,7 @@ export default function FinanceDashboard({
                         <td><span className="category-pill">{transaction.category?.name || "Other"}</span></td>
                         <td className="transaction-date">{formatDate(transaction.transactionDate)}</td>
                         <td className={`transaction-amount ${transaction.type === "INCOME" ? "is-income" : ""}`}>
-                          {transaction.type === "INCOME" ? "+" : "−"}{formatMoney(transaction.amount, transaction.currency)}
+                          {transaction.type === "INCOME" ? "+" : "−"}{formatMoney(transaction.amount, currency)}
                         </td>
                       </tr>
                     ))}
@@ -2275,7 +2262,7 @@ export default function FinanceDashboard({
             <div className="transaction-footer">
               <span>Showing {visibleTransactions.length} of {totalTransactions} transactions</span>
               {transactions.some((transaction) => transaction.currency !== currency) && (
-                <span>Summary totals include {currency} transactions only.</span>
+                <span>All amounts are shown in {currency} without exchange conversion.</span>
               )}
             </div>
           </section>
@@ -2352,6 +2339,19 @@ export default function FinanceDashboard({
                   value={form.amount}
                 />
               </label>
+              <label className="dashboard-field">
+                <span>Payment method</span>
+                <select
+                  onChange={(event) => updateForm("paymentMode", event.target.value as PaymentMode | "")}
+                  required
+                  value={form.paymentMode}
+                >
+                  <option value="" disabled>Choose a payment method</option>
+                  <option value="CASH">Cash</option>
+                  <option value="CREDIT">Credit</option>
+                  <option value="BANK_ACCOUNT">Bank account</option>
+                </select>
+              </label>
               <div className="form-grid">
                 <label className="dashboard-field">
                   <span>Category</span>
@@ -2426,6 +2426,7 @@ export default function FinanceDashboard({
       )}
       {selectedTransaction && (
         <TransactionDetails
+          currency={currency}
           onClose={closeTransactionDetails}
           onEdit={() => editTransaction(selectedTransaction)}
           transaction={selectedTransaction}

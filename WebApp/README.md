@@ -11,9 +11,23 @@ npm install
 npm run dev
 ```
 
-To use the configured API URL locally, copy `.env.example` to `.env`. Vite does
-not load `.env.example` automatically. The frontend defaults to the configured
-Render API URL when `VITE_API_BASE_URL` is not set.
+The frontend defaults to `http://localhost:8080` when
+`VITE_API_BASE_URL` is not set, so sign-in and dashboard requests use the same
+local backend. To use another API locally, copy `.env.example` to `.env` and
+set `VITE_API_BASE_URL`; Vite does not load `.env.example` automatically.
+
+## Transaction filtering and reports
+
+Advanced Transactions sends the supported type, payment-mode, date-range,
+category, and subcategory filters to `GET /api/v1/transactions`, then loads all
+pages of the filtered result. Date ranges must include both dates and span no
+more than 366 days. The documented endpoint has no description/text-search
+parameter, so the text box searches the API results in the browser; choose a
+date range to search older transactions. Reports request their selected six
+months directly from the same paginated endpoint. Graphs request all pages for
+their selected week, month, or year using explicit `from` and `to` dates, so
+historical chart totals are based on the selected period rather than a recent
+transaction subset.
 
 ## Deploy to Cloudflare Pages
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { formatCurrency } from "../formatting/currency";
 import "./transaction-details.css";
 
 export type TransactionDetailsData = {
@@ -6,24 +7,13 @@ export type TransactionDetailsData = {
   amount: number;
   currency: string;
   type: "INCOME" | "EXPENSE";
+  paymentMode?: "CASH" | "CREDIT" | "BANK_ACCOUNT";
   transactionDate: string;
   description?: string | null;
   category?: { id: string; name: string };
   subCategory?: { id: string; name: string };
   createdAt?: string;
 };
-
-function formatCurrency(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
-}
 
 function formatDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
@@ -47,10 +37,12 @@ function formatCreatedAt(date: string) {
 
 export default function TransactionDetails({
   transaction,
+  currency,
   onClose,
   onEdit,
 }: {
   transaction: TransactionDetailsData;
+  currency: string;
   onClose: () => void;
   onEdit: () => void;
 }) {
@@ -118,7 +110,7 @@ export default function TransactionDetails({
         </div>
 
         <p className={`transaction-details-amount ${isIncome ? "is-income" : ""}`}>
-          {isIncome ? "+" : "−"}{formatCurrency(transaction.amount, transaction.currency)}
+          {isIncome ? "+" : "−"}{formatCurrency(transaction.amount, currency)}
         </p>
         <h2 id="transaction-details-title">
           {description || transaction.subCategory?.name || transaction.category?.name || "Transaction"}
@@ -129,6 +121,16 @@ export default function TransactionDetails({
           <div>
             <dt>Category</dt>
             <dd>{transaction.category?.name || "Uncategorized"}</dd>
+          </div>
+          <div>
+            <dt>Payment method</dt>
+            <dd>
+              {transaction.paymentMode === "BANK_ACCOUNT"
+                ? "Bank account"
+                : transaction.paymentMode
+                  ? transaction.paymentMode[0] + transaction.paymentMode.slice(1).toLowerCase()
+                  : "Not specified"}
+            </dd>
           </div>
           <div>
             <dt>Subcategory</dt>

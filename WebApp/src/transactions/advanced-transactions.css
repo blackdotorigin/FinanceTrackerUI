@@ -202,6 +202,12 @@
   font-size: 12px;
 }
 
+.advanced-search-help {
+  margin: 7px 2px 0;
+  color: #87948b;
+  font-size: 10px;
+}
+
 .advanced-date-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -225,6 +231,32 @@
   border: 1px solid #e9eee8;
   border-radius: 10px;
   font-size: 10px;
+}
+
+.advanced-extra-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.advanced-extra-filters label > span {
+  display: block;
+  margin: 0 0 6px 2px;
+  color: #87948b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.advanced-extra-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  color: #526258;
+  background: #fafbf9;
+  border: 1px solid #e9eee8;
+  border-radius: 10px;
+  font-size: 11px;
 }
 
 .advanced-type-filters {
@@ -633,6 +665,12 @@
   border-color: #344039;
 }
 
+.dashboard-app[data-theme="dark"] .advanced-extra-filters select {
+  color: #d6e1d8;
+  background: #202a23;
+  border-color: #3a493e;
+}
+
 .dashboard-app[data-theme="dark"] .advanced-search-field input {
   color: #dce5dd;
 }
@@ -781,6 +819,9 @@
   }
   .advanced-transaction-date { display: none; }
   .advanced-search-row {
+    grid-template-columns: 1fr;
+  }
+  .advanced-extra-filters {
     grid-template-columns: 1fr;
   }
 }

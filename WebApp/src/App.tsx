@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { API_BASE_URL } from "./api/apiBaseUrl";
 import FinanceDashboard from "./FinanceDashboard";
+import { useAutoHideScrollbars } from "./hooks/useAutoHideScrollbars";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://financetracker-iulg.onrender.com"
-).replace(/\/+$/, "");
 let oauthRefreshRequest: Promise<unknown> | null = null;
 
 function BrandMark() {
@@ -287,6 +286,8 @@ function MoneyIllustration() {
 }
 
 export default function App() {
+  useAutoHideScrollbars();
+
   const isOAuthCallback = window.location.pathname === "/auth/callback";
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [fullName, setFullName] = useState("");
