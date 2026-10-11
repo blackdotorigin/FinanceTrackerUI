@@ -179,8 +179,8 @@
 }
 
 .advanced-search-field:focus-within {
-  border-color: #a8bba9;
-  box-shadow: 0 0 0 3px rgba(95, 133, 99, .09);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .advanced-search-field svg {
@@ -521,6 +521,7 @@
 }
 
 .advanced-transaction-row {
+  position: relative;
   width: 100%;
   min-height: 70px;
   display: grid;
@@ -528,20 +529,127 @@
   align-items: center;
   gap: 14px;
   padding: 9px 12px;
+  overflow: hidden;
+  isolation: isolate;
   color: inherit;
   background: #fff;
   border: 1px solid transparent;
   border-radius: 11px;
   cursor: pointer;
   text-align: left;
-  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 
-.advanced-transaction-row:hover,
+.advanced-transaction-row::after {
+  position: absolute;
+  z-index: 2;
+  top: -45%;
+  bottom: -45%;
+  left: -35%;
+  width: 28%;
+  content: "";
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .08) 35%, rgba(255, 255, 255, .76) 50%, rgba(255, 255, 255, .08) 65%, transparent 88%);
+  opacity: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+}
+
+.advanced-transaction-row.is-expense:focus-visible {
+  background: #f3d8ce;
+  border-color: #eac7bb;
+  box-shadow: 0 7px 18px rgba(84, 57, 47, .1);
+  transform: translateY(-1px) scale(1.008);
+}
+
+.advanced-transaction-row.is-income:focus-visible {
+  background: #cfe5d0;
+  border-color: #b9d7bb;
+  box-shadow: 0 7px 18px rgba(48, 77, 54, .1);
+  transform: translateY(-1px) scale(1.008);
+}
+
 .advanced-transaction-row:focus-visible {
-  background: #fafbf9;
-  border-color: #e7ede5;
-  transform: translateY(-1px);
+  outline: 2px solid #a6b3a7;
+  outline-offset: -2px;
+}
+
+.advanced-transaction-row:focus-visible::after {
+  opacity: .75;
+  animation: advanced-transaction-glass-shine .75s ease-out;
+}
+
+.advanced-transaction-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.advanced-transaction-copy strong {
+  transition: color .18s ease, transform .18s ease, text-shadow .18s ease;
+}
+
+.advanced-transaction-row:focus-visible .advanced-transaction-copy strong {
+  color: #263d2e;
+  text-shadow: 0 1px rgba(255, 255, 255, .5);
+  transform: translateX(2px);
+}
+
+@keyframes advanced-transaction-glass-shine {
+  from { transform: translateX(-160%) skewX(-18deg); }
+  to { transform: translateX(500%) skewX(-18deg); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .advanced-transaction-row.is-expense:hover {
+    background: #f3d8ce;
+    border-color: #eac7bb;
+    box-shadow: 0 7px 18px rgba(84, 57, 47, .1);
+    transform: translateY(-1px) scale(1.008);
+  }
+
+  .advanced-transaction-row.is-income:hover {
+    background: #cfe5d0;
+    border-color: #b9d7bb;
+    box-shadow: 0 7px 18px rgba(48, 77, 54, .1);
+    transform: translateY(-1px) scale(1.008);
+  }
+
+  .advanced-transaction-row:hover::after {
+    opacity: .75;
+    animation: advanced-transaction-glass-shine .75s ease-out;
+  }
+
+  .advanced-transaction-row:hover .advanced-transaction-copy strong {
+    color: #263d2e;
+    text-shadow: 0 1px rgba(255, 255, 255, .5);
+    transform: translateX(2px);
+  }
+}
+
+@media (hover: none) {
+  .advanced-transaction-row.is-expense:active {
+    background: #f3d8ce;
+    border-color: #eac7bb;
+  }
+
+  .advanced-transaction-row.is-income:active {
+    background: #cfe5d0;
+    border-color: #b9d7bb;
+  }
+
+  .advanced-transaction-row:active {
+    transform: scale(.995);
+  }
+
+  .advanced-transaction-row:active::after {
+    opacity: .75;
+    animation: advanced-transaction-glass-shine .75s ease-out;
+  }
+
+  .advanced-transaction-row:active .advanced-transaction-copy strong {
+    color: #263d2e;
+    text-shadow: 0 1px rgba(255, 255, 255, .5);
+    transform: translateX(2px);
+  }
 }
 
 .advanced-transaction-icon {
@@ -680,6 +788,11 @@
   opacity: 1;
 }
 
+.dashboard-app[data-theme="dark"] .advanced-search-field:focus-within {
+  border-color: #46534a;
+  box-shadow: none;
+}
+
 .dashboard-app[data-theme="dark"] .advanced-transactions-heading p:last-child,
 .dashboard-app[data-theme="dark"] .advanced-transaction-summary span,
 .dashboard-app[data-theme="dark"] .advanced-date-fields label > span,
@@ -779,10 +892,65 @@
   background: transparent;
 }
 
-.dashboard-app[data-theme="dark"] .advanced-transaction-row:hover,
+.dashboard-app[data-theme="dark"] .advanced-transaction-row.is-expense:focus-visible {
+  background: #512f2b;
+  border-color: #62403a;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+}
+
+.dashboard-app[data-theme="dark"] .advanced-transaction-row.is-income:focus-visible {
+  background: #2d4c32;
+  border-color: #3c5b40;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+}
+
 .dashboard-app[data-theme="dark"] .advanced-transaction-row:focus-visible {
-  background: #222d26;
-  border-color: #354139;
+  outline-color: #728175;
+}
+
+.dashboard-app[data-theme="dark"] .advanced-transaction-row::after {
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .015) 35%, rgba(255, 255, 255, .18) 50%, rgba(255, 255, 255, .015) 65%, transparent 88%);
+}
+
+.dashboard-app[data-theme="dark"] .advanced-transaction-row:focus-visible .advanced-transaction-copy strong {
+  color: #f0f6f1;
+  text-shadow: 0 1px rgba(255, 255, 255, .12);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row.is-expense:hover {
+    background: #512f2b;
+    border-color: #62403a;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+  }
+
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row.is-income:hover {
+    background: #2d4c32;
+    border-color: #3c5b40;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+  }
+
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row:hover .advanced-transaction-copy strong {
+    color: #f0f6f1;
+    text-shadow: 0 1px rgba(255, 255, 255, .12);
+  }
+}
+
+@media (hover: none) {
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row.is-expense:active {
+    background: #512f2b;
+    border-color: #62403a;
+  }
+
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row.is-income:active {
+    background: #2d4c32;
+    border-color: #3c5b40;
+  }
+
+  .dashboard-app[data-theme="dark"] .advanced-transaction-row:active .advanced-transaction-copy strong {
+    color: #f0f6f1;
+    text-shadow: 0 1px rgba(255, 255, 255, .12);
+  }
 }
 
 .dashboard-app[data-theme="dark"] .advanced-transaction-copy strong,

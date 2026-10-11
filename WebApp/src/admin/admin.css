@@ -166,8 +166,8 @@
 }
 
 .admin-wizard-search > div:focus-within {
-  border-color: #9aa99d;
-  box-shadow: 0 0 0 3px rgba(71, 96, 76, .07);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .admin-wizard-search svg {
@@ -507,8 +507,8 @@
 .admin-wizard-edit input:focus,
 .admin-wizard-filters select:focus,
 .admin-wizard-role select:focus {
-  border-color: #8cac91;
-  box-shadow: 0 0 0 3px rgba(107, 151, 120, .1);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .admin-wizard-edit-footer {
@@ -740,8 +740,8 @@
 .admin-wizard-date-trigger:hover,
 .admin-wizard-date-trigger[aria-expanded="true"] {
   background: #fff;
-  border-color: #a0b5a1;
-  box-shadow: 0 0 0 3px rgba(71, 96, 76, .07);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .admin-wizard-date-trigger > svg {
@@ -1268,8 +1268,8 @@
   .dashboard-app[data-theme="dark"] .admin-wizard-edit input:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters select:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-role select:focus {
-    border-color: #718c74;
-    box-shadow: 0 0 0 3px rgba(135, 168, 137, .12);
+    border-color: #4a584d;
+    box-shadow: none;
   }
 
   .dashboard-app[data-theme="dark"] .admin-wizard-date-label {
@@ -1289,8 +1289,8 @@
   .dashboard-app[data-theme="dark"] .admin-wizard-date-trigger:hover,
   .dashboard-app[data-theme="dark"] .admin-wizard-date-trigger[aria-expanded="true"] {
     background: #1b2620;
-    border-color: #718c74;
-    box-shadow: 0 0 0 3px rgba(135, 168, 137, .12);
+    border-color: #46534a;
+    box-shadow: none;
   }
 
   .dashboard-app[data-theme="dark"] .admin-calendar-popover {

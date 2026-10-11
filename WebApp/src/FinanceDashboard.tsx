@@ -302,8 +302,10 @@ function Brand() {
     <a className="brand dashboard-brand" href="/" aria-label="FinanceFlow home">
       <span className="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none">
-          <path d="M7 22.5 13.2 16l4.3 4.1L25 11" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M19.4 11H25v5.6" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+          <g transform="translate(3.2 3.2) scale(.8)">
+            <path d="M7 22.5 13.2 16l4.3 4.1L25 11" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M19.4 11H25v5.6" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+          </g>
         </svg>
       </span>
       <span>financeflow</span>
@@ -2206,12 +2208,18 @@ export default function FinanceDashboard({
               <div className="transactions-table-wrap">
                 <table className="transactions-table">
                   <thead>
-                    <tr><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Date</th><th scope="col">Amount</th></tr>
+                    <tr>
+                      <th scope="col">Description</th>
+                      <th scope="col">Payment method</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Amount</th>
+                    </tr>
                   </thead>
                   <tbody>
                     {visibleTransactions.map((transaction) => (
                       <tr
                         aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. Press Enter to view details.`}
+                        className={transaction.type === "INCOME" ? "is-income" : "is-expense"}
                         key={transaction.id}
                         onClick={() => setSelectedTransaction(transaction)}
                         onKeyDown={(event) => {
@@ -2229,13 +2237,21 @@ export default function FinanceDashboard({
                             </span>
                             <span>
                               <strong>{transaction.description || transaction.category?.name || "Transaction"}</strong>
-                              <small>{transaction.subCategory?.name || transaction.category?.name || "Uncategorized"}</small>
+                              {(transaction.subCategory || (transaction.description && transaction.category)) && (
+                                <small>{transaction.subCategory?.name || transaction.category?.name}</small>
+                              )}
                             </span>
                           </div>
                         </td>
-                        <td><span className="category-pill">{transaction.category?.name || "Other"}</span></td>
-                        <td className="transaction-date">{formatDate(transaction.transactionDate)}</td>
-                        <td className={`transaction-amount ${transaction.type === "INCOME" ? "is-income" : ""}`}>
+                        <td data-label="Payment method">
+                          {transaction.paymentMode === "BANK_ACCOUNT"
+                            ? "Bank account"
+                            : transaction.paymentMode
+                              ? transaction.paymentMode[0] + transaction.paymentMode.slice(1).toLowerCase()
+                              : "Not specified"}
+                        </td>
+                        <td className="transaction-date" data-label="Date">{formatDate(transaction.transactionDate)}</td>
+                        <td className={`transaction-amount ${transaction.type === "INCOME" ? "is-income" : ""}`} data-label="Amount">
                           {transaction.type === "INCOME" ? "+" : "−"}{formatMoney(transaction.amount, currency)}
                         </td>
                       </tr>

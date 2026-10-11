@@ -882,8 +882,8 @@
 }
 .budget-limit-input:focus-within {
   background: #fff;
-  border-color: #aebcaf;
-  box-shadow: 0 0 0 3px rgba(77, 96, 80, .08);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 .budget-limit-input input {
   width: 100%;
@@ -1133,6 +1133,11 @@ body {
   margin: 0;
 }
 
+html:has(.dashboard-app[data-theme="dark"]),
+body:has(.dashboard-app[data-theme="dark"]) {
+  background: #111813;
+}
+
 button,
 input {
   font: inherit;
@@ -1144,8 +1149,7 @@ a {
 }
 
 button:focus-visible,
-a:focus-visible,
-input:focus-visible {
+a:focus-visible {
   outline: 3px solid #95c7a5;
   outline-offset: 3px;
 }
@@ -1394,9 +1398,8 @@ input:focus-visible {
 
 .input-wrap:focus-within {
   background: #fff;
-  border-color: #84a991;
-  box-shadow: 0 0 0 4px rgba(107, 151, 120, .12);
-  transform: translateY(-1px);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .input-icon {
@@ -2622,8 +2625,8 @@ input:focus-visible {
 }
 
 .activity-period-controls select:focus-visible {
-  outline: 2px solid #95c7a5;
-  outline-offset: 1px;
+  outline: none;
+  background: #f0f3ef;
 }
 
 .activity-period-controls select[aria-label="Activity month"] {
@@ -3116,8 +3119,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 }
 
 .transaction-search:focus-within {
-  border-color: #99b49d;
-  box-shadow: 0 0 0 3px rgba(107, 151, 120, .1);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .transaction-search svg {
@@ -3159,7 +3162,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 .transactions-table {
   width: 100%;
   min-width: 570px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 5px;
 }
 
 .transactions-table th {
@@ -3184,10 +3188,10 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .transactions-table td {
   padding: 13px 10px;
-  border-bottom: 1px solid #f1f3f0;
   color: #617067;
   font-size: 10px;
   white-space: nowrap;
+  transition: background-color .18s ease;
 }
 
 .transactions-table tbody tr {
@@ -3199,24 +3203,184 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
-.transactions-table tbody tr:hover {
+.transactions-table tbody tr.is-expense:focus-visible {
   z-index: 1;
-  background: #f3f6f3;
-  box-shadow: inset 3px 0 #93a995, 0 5px 14px rgba(39, 55, 43, .09);
-  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 7px 18px rgba(84, 57, 47, .1);
+  transform: translateY(-1px) scale(1.008);
+}
+
+.transactions-table tbody tr.is-income:focus-visible {
+  z-index: 1;
+  box-shadow: 0 7px 18px rgba(48, 77, 54, .1);
+  transform: translateY(-1px) scale(1.008);
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td {
+  background-color: #f3d8ce;
+}
+
+.transactions-table tbody tr.is-income:focus-visible td {
+  background-color: #cfe5d0;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td:first-child,
+.transactions-table tbody tr.is-income:focus-visible td:first-child {
+  border-radius: 11px 0 0 11px;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td:last-child,
+.transactions-table tbody tr.is-income:focus-visible td:last-child {
+  border-radius: 0 11px 11px 0;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td,
+.transactions-table tbody tr.is-income:focus-visible td {
+  background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+  background-size: 240% 100%;
+  animation: transaction-row-shine .75s ease-out;
 }
 
 .transactions-table tbody tr:focus-visible {
-  z-index: 1;
-  background: #f3f6f3;
-  box-shadow: inset 3px 0 #93a995, inset 0 0 0 1px #c8d2c8, 0 5px 14px rgba(39, 55, 43, .08);
-  transform: translateY(-1px) scale(1.01);
+  outline: 2px solid #a6b3a7;
+  outline-offset: -2px;
+}
+
+.transaction-description strong {
+  transition: color .18s ease, transform .18s ease, text-shadow .18s ease;
+}
+
+.transactions-table tbody tr:focus-visible .transaction-description strong {
+  color: #263d2e;
+  text-shadow: 0 1px rgba(255, 255, 255, .5);
+  transform: translateX(2px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .transactions-table tbody tr.is-expense:hover,
+  .transactions-table tbody tr.is-income:hover {
+    z-index: 1;
+    transform: translateY(-1px) scale(1.008);
+  }
+
+  .transactions-table tbody tr.is-expense:hover {
+    box-shadow: 0 7px 18px rgba(84, 57, 47, .1);
+  }
+
+  .transactions-table tbody tr.is-income:hover {
+    box-shadow: 0 7px 18px rgba(48, 77, 54, .1);
+  }
+
+  .transactions-table tbody tr.is-expense:hover td,
+  .transactions-table tbody tr.is-income:hover td {
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+    background-size: 240% 100%;
+    animation: transaction-row-shine .75s ease-out;
+  }
+
+  .transactions-table tbody tr.is-expense:hover td {
+    background-color: #f3d8ce;
+  }
+
+  .transactions-table tbody tr.is-income:hover td {
+    background-color: #cfe5d0;
+  }
+
+  .transactions-table tbody tr.is-expense:hover td:first-child,
+  .transactions-table tbody tr.is-income:hover td:first-child {
+    border-radius: 11px 0 0 11px;
+  }
+
+  .transactions-table tbody tr.is-expense:hover td:last-child,
+  .transactions-table tbody tr.is-income:hover td:last-child {
+    border-radius: 0 11px 11px 0;
+  }
+
+  .transactions-table tbody tr:hover .transaction-description strong {
+    color: #263d2e;
+    text-shadow: 0 1px rgba(255, 255, 255, .5);
+    transform: translateX(2px);
+  }
+}
+
+@keyframes transaction-row-shine {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+@media (hover: none) {
+  .transactions-table tbody tr.is-expense:active {
+    transform: scale(.995);
+  }
+
+  .transactions-table tbody tr.is-income:active {
+    transform: scale(.995);
+  }
+
+  .transactions-table tbody tr.is-expense:active td {
+    background-color: #f3d8ce;
+    border-radius: 0;
+  }
+
+  .transactions-table tbody tr.is-income:active td {
+    background-color: #cfe5d0;
+    border-radius: 0;
+  }
+
+  .transactions-table tbody tr.is-expense:active td:first-child,
+  .transactions-table tbody tr.is-income:active td:first-child {
+    border-radius: 11px 0 0 11px;
+  }
+
+  .transactions-table tbody tr.is-expense:active td:last-child,
+  .transactions-table tbody tr.is-income:active td:last-child {
+    border-radius: 0 11px 11px 0;
+  }
+
+  .transactions-table tbody tr:active td {
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+    background-size: 240% 100%;
+    animation: transaction-row-shine .75s ease-out;
+  }
+
+  .transactions-table tbody tr:active .transaction-description strong {
+    color: #263d2e;
+    transform: translateX(2px);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active {
+    transform: scale(.995);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active {
+    transform: scale(.995);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active td {
+    background-color: #512f2b;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active td {
+    background-color: #2d4c32;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr:active td {
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .12) 49%, transparent 70%);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr:active .transaction-description strong {
+    color: #f0f6f1;
+  }
+
+  .transactions-table tbody tr:active {
+    transform: scale(.995);
+  }
 }
 
 .transaction-description {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding-left: 8px;
 }
 
 .transaction-type-icon {
@@ -3501,11 +3665,12 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .transaction-modal-backdrop {
   position: fixed;
-  z-index: 20;
+  z-index: 1100;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 12px;
+  padding: max(12px, env(safe-area-inset-top, 12px)) 12px max(12px, env(safe-area-inset-bottom, 12px));
   background: rgba(21, 38, 29, .38);
   backdrop-filter: blur(5px);
   animation: fade-in .18s ease-out both;
@@ -3513,8 +3678,12 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .transaction-modal {
   width: min(525px, 100%);
-  max-height: min(760px, calc(100vh - 40px));
+  max-height: min(760px, calc(100vh - 24px));
+  max-height: min(760px, calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 27px;
   background: #fff;
   border: 1px solid rgba(255, 255, 255, .7);
@@ -3640,8 +3809,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 .dashboard-field input:focus,
 .dashboard-field select:focus {
   background: #fff;
-  border-color: #8cac91;
-  box-shadow: 0 0 0 3px rgba(107, 151, 120, .1);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .dashboard-field input::placeholder {
@@ -3669,8 +3838,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .dashboard-field input[type="date"]:focus {
   background: #fff;
-  border-color: #8cac91;
-  box-shadow: 0 0 0 3px rgba(107, 151, 120, .1);
+  border-color: #d4dbd5;
+  box-shadow: none;
 }
 
 .dashboard-field input[type="date"]::-webkit-calendar-picker-indicator {
@@ -4356,6 +4525,13 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
     border-color: #344039;
   }
 
+  .dashboard-app[data-theme="dark"] .transaction-search:focus-within,
+  .dashboard-app[data-theme="dark"] .input-wrap:focus-within {
+    border-color: #46534a;
+    box-shadow: none;
+    transform: none;
+  }
+
   .dashboard-app[data-theme="dark"] .dashboard-field > span,
   .dashboard-app[data-theme="dark"] .admin-wizard-search > label,
   .dashboard-app[data-theme="dark"] .admin-wizard-edit > label,
@@ -4374,8 +4550,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   .dashboard-app[data-theme="dark"] .admin-wizard-filters select:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-role select:focus {
     background: #1b2620;
-    border-color: #718c74;
-    box-shadow: 0 0 0 3px rgba(135, 168, 137, .12);
+    border-color: #4a584d;
+    box-shadow: none;
   }
 
   .dashboard-app[data-theme="dark"] .dashboard-field input::placeholder,
@@ -4388,10 +4564,62 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
     background: #202923;
   }
 
-  .dashboard-app[data-theme="dark"] .transactions-table tbody tr:hover,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible {
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible {
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible td {
+    background-color: #512f2b;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible td {
+    background-color: #2d4c32;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible td {
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .12) 49%, transparent 70%);
+  }
+
   .dashboard-app[data-theme="dark"] .transactions-table tbody tr:focus-visible {
-    background: #252f29;
-    box-shadow: inset 3px 0 #78917c, inset 0 0 0 1px #3b4940, 0 5px 14px rgba(0, 0, 0, .2);
+    outline-color: #728175;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr:focus-visible .transaction-description strong {
+    color: #f0f6f1;
+    text-shadow: 0 1px rgba(255, 255, 255, .12);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover {
+      box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+    }
+
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover {
+      box-shadow: 0 7px 18px rgba(0, 0, 0, .22);
+    }
+
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover td {
+      background-color: #512f2b;
+    }
+
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover td {
+      background-color: #2d4c32;
+    }
+
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover td,
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover td {
+      background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .12) 49%, transparent 70%);
+    }
+
+    .dashboard-app[data-theme="dark"] .transactions-table tbody tr:hover .transaction-description strong {
+      color: #f0f6f1;
+      text-shadow: 0 1px rgba(255, 255, 255, .12);
+    }
   }
 
   .dashboard-app[data-theme="dark"] .transaction-amount {
@@ -4442,8 +4670,9 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   }
 
   .dashboard-app[data-theme="dark"] .admin-wizard-search > div:focus-within {
-    border-color: #718c74;
-    box-shadow: 0 0 0 3px rgba(135, 168, 137, .12);
+    border-color: #46534a;
+    box-shadow: none;
+    transform: none;
   }
 
   .dashboard-app[data-theme="dark"] .admin-wizard-actions > button:hover,
@@ -4786,8 +5015,8 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .dashboard-app[data-theme="dark"] .budget-limit-input:focus-within {
   background: #1b2620;
-  border-color: #718c74;
-  box-shadow: 0 0 0 3px rgba(135, 168, 137, .1);
+  border-color: #4a584d;
+  box-shadow: none;
 }
 
 .dashboard-app[data-theme="dark"] .budget-limit-input input {
@@ -4924,4 +5153,533 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   color: #c4d7c4;
   background: #29382c;
   border-color: #36483a;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible,
+.transactions-table tbody tr.is-income:focus-visible {
+  background-size: 240% 100%;
+  animation: transaction-row-shine .75s ease-out;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible {
+  background-color: #f3d8ce;
+  background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+}
+
+.transactions-table tbody tr.is-income:focus-visible {
+  background-color: #cfe5d0;
+  background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td,
+.transactions-table tbody tr.is-income:focus-visible td {
+  background-color: transparent;
+  background-image: none;
+  animation: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .transactions-table tbody tr.is-expense:hover,
+  .transactions-table tbody tr.is-income:hover {
+    background-size: 240% 100%;
+    animation: transaction-row-shine .75s ease-out;
+  }
+
+  .transactions-table tbody tr.is-expense:hover {
+    background-color: #f3d8ce;
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+  }
+
+  .transactions-table tbody tr.is-income:hover {
+    background-color: #cfe5d0;
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+  }
+
+  .transactions-table tbody tr.is-expense:hover td,
+  .transactions-table tbody tr.is-income:hover td {
+    background-color: transparent;
+    background-image: none;
+    animation: none;
+  }
+}
+
+@media (hover: none) {
+  .transactions-table tbody tr.is-expense:active,
+  .transactions-table tbody tr.is-income:active {
+    background-size: 240% 100%;
+    animation: transaction-row-shine .75s ease-out;
+  }
+
+  .transactions-table tbody tr.is-expense:active {
+    background-color: #f3d8ce;
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+  }
+
+  .transactions-table tbody tr.is-income:active {
+    background-color: #cfe5d0;
+    background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .72) 49%, transparent 70%);
+  }
+
+  .transactions-table tbody tr.is-expense:active td,
+  .transactions-table tbody tr.is-income:active td {
+    background-color: transparent;
+    background-image: none;
+    animation: none;
+  }
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active {
+  background-color: #512f2b;
+  background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .12) 49%, transparent 70%);
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active {
+  background-color: #2d4c32;
+  background-image: linear-gradient(108deg, transparent 28%, rgba(255, 255, 255, .12) 49%, transparent 70%);
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible td,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover td,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active td,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible td,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover td,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active td {
+  background-color: transparent;
+  background-image: none;
+  animation: none;
+}
+
+.transaction-modal {
+  position: relative;
+  isolation: isolate;
+}
+
+.transaction-modal::after,
+.transaction-details-dialog::after {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: -35%;
+  width: 28%;
+  content: "";
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .08) 35%, rgba(255, 255, 255, .76) 50%, rgba(255, 255, 255, .08) 65%, transparent 88%);
+  opacity: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+}
+
+.transaction-modal > *,
+.transaction-details-dialog > * {
+  position: relative;
+  z-index: 1;
+}
+
+.transaction-details-dialog {
+  position: relative;
+  isolation: isolate;
+}
+
+.transaction-modal::after,
+.transaction-details-dialog::after {
+  animation: transaction-glass-shine 1.5s cubic-bezier(.22, .61, .36, 1) .12s both;
+}
+
+.dashboard-app[data-theme="dark"] .transaction-modal::after,
+.dashboard-app[data-theme="dark"] .transaction-details-dialog::after {
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .015) 35%, rgba(255, 255, 255, .18) 50%, rgba(255, 255, 255, .015) 65%, transparent 88%);
+}
+
+@keyframes transaction-glass-shine {
+  from {
+    opacity: 0;
+    transform: translateX(-160%) skewX(-18deg);
+  }
+  15%, 80% {
+    opacity: .75;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(500%) skewX(-18deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transactions-table tbody tr.is-expense:focus-visible,
+  .transactions-table tbody tr.is-income:focus-visible,
+  .transactions-table tbody tr.is-expense:hover,
+  .transactions-table tbody tr.is-income:hover,
+  .transactions-table tbody tr.is-expense:active,
+  .transactions-table tbody tr.is-income:active,
+  .transactions-table tbody tr:hover::after,
+  .transactions-table tbody tr:focus-visible::after,
+  .transactions-table tbody tr:active::after,
+  .transactions-table tbody tr::after,
+  .transaction-modal::after,
+  .transaction-details-dialog::after {
+    animation-duration: .01ms;
+  }
+}
+
+.transactions-table td {
+  padding-right: 7px;
+  padding-left: 7px;
+}
+
+.transaction-description {
+  gap: 8px;
+  padding-left: 6px;
+}
+
+.transactions-table {
+  table-layout: fixed;
+}
+
+.transactions-table th:first-child,
+.transactions-table td:first-child {
+  width: 42%;
+}
+
+.transactions-table th:nth-child(2),
+.transactions-table td:nth-child(2) {
+  width: 21%;
+}
+
+.transactions-table th:nth-child(3),
+.transactions-table td:nth-child(3) {
+  width: 18%;
+}
+
+.transactions-table th:last-child,
+.transactions-table td:last-child {
+  width: 19%;
+}
+
+.category-pill {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.transactions-table tbody tr {
+  transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible,
+.transactions-table tbody tr.is-income:focus-visible,
+.transactions-table tbody tr.is-expense:hover,
+.transactions-table tbody tr.is-income:hover,
+.transactions-table tbody tr.is-expense:active,
+.transactions-table tbody tr.is-income:active {
+  transform: none;
+  background-image: none;
+  animation: none;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible td,
+.transactions-table tbody tr.is-income:focus-visible td,
+.transactions-table tbody tr.is-expense:hover td,
+.transactions-table tbody tr.is-income:hover td,
+.transactions-table tbody tr.is-expense:active td,
+.transactions-table tbody tr.is-income:active td {
+  background-color: transparent;
+  background-image: none;
+  animation: none;
+}
+
+.transactions-table tbody tr.is-expense:focus-visible,
+.transactions-table tbody tr.is-expense:hover,
+.transactions-table tbody tr.is-expense:active {
+  background-color: #f3d8ce;
+}
+
+.transactions-table tbody tr.is-income:focus-visible,
+.transactions-table tbody tr.is-income:hover,
+.transactions-table tbody tr.is-income:active {
+  background-color: #cfe5d0;
+}
+
+.transactions-table tbody tr::after {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: -35%;
+  width: 28%;
+  content: "";
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .08) 35%, rgba(255, 255, 255, .76) 50%, rgba(255, 255, 255, .08) 65%, transparent 88%);
+  opacity: 0;
+  pointer-events: none;
+  transform: skewX(-18deg);
+}
+
+.transactions-table tbody tr > td {
+  position: relative;
+  z-index: 1;
+}
+
+.transactions-table tbody tr:focus-visible::after,
+.transactions-table tbody tr:active::after {
+  opacity: .75;
+  animation: transaction-row-glass-shine .75s ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .transactions-table tbody tr:hover::after {
+    opacity: .75;
+    animation: transaction-row-glass-shine .75s ease-out;
+  }
+}
+
+@keyframes transaction-row-glass-shine {
+  from { transform: translateX(-160%) skewX(-18deg); }
+  to { transform: translateX(500%) skewX(-18deg); }
+}
+
+.transactions-table tbody tr:focus-visible .transaction-description strong,
+.transactions-table tbody tr:hover .transaction-description strong,
+.transactions-table tbody tr:active .transaction-description strong {
+  transform: none;
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active {
+  background-image: none;
+  animation: none;
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active {
+  background-color: #512f2b;
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover,
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active {
+  background-color: #2d4c32;
+}
+
+.dashboard-app[data-theme="dark"] .transactions-table tbody tr::after {
+  background: linear-gradient(108deg, transparent 12%, rgba(255, 255, 255, .015) 35%, rgba(255, 255, 255, .18) 50%, rgba(255, 255, 255, .015) 65%, transparent 88%);
+}
+
+@media (max-width: 720px) {
+  .transactions-table-wrap {
+    overflow: visible;
+  }
+
+  .transactions-table {
+    display: block;
+    min-width: 0;
+    table-layout: auto;
+    border-spacing: 0;
+  }
+
+  .transactions-table thead {
+    display: none;
+  }
+
+  .transactions-table tbody {
+    display: grid;
+    gap: 8px;
+  }
+
+  .transactions-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    align-items: center;
+    gap: 9px 12px;
+    padding: 11px 12px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #edf0eb;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(35, 49, 38, .035);
+  }
+
+  .transactions-table tbody tr.is-expense:focus-visible,
+  .transactions-table tbody tr.is-income:focus-visible {
+    outline: 2px solid #a6b3a7;
+    outline-offset: -1px;
+  }
+
+  .transactions-table td {
+    min-width: 0;
+    display: block;
+    padding: 0;
+    overflow-wrap: anywhere;
+    border: 0;
+    white-space: normal;
+  }
+
+  .transactions-table tbody tr > td:first-child,
+  .transactions-table tbody tr > td:nth-child(2),
+  .transactions-table tbody tr > td:nth-child(3),
+  .transactions-table tbody tr > td:last-child {
+    width: auto;
+  }
+
+  .transactions-table td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .transactions-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .transactions-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+
+  .transactions-table td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+  }
+
+  .transactions-table td:nth-child(2)::before,
+  .transactions-table td:nth-child(3)::before,
+  .transactions-table td:nth-child(4)::before {
+    display: block;
+    margin-bottom: 4px;
+    color: #929d95;
+    font-size: 8px;
+    font-weight: 600;
+    content: attr(data-label);
+  }
+
+  .transactions-table .transaction-description {
+    min-width: 0;
+    gap: 8px;
+    padding-left: 0;
+  }
+
+  .transactions-table .transaction-description > span:last-child {
+    min-width: 0;
+  }
+
+  .transactions-table .transaction-description strong,
+  .transactions-table .transaction-description small {
+    max-width: 100%;
+  }
+
+  .transactions-table .transaction-type-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .transactions-table .category-pill {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+  }
+
+  .transactions-table .transaction-amount {
+    text-align: right;
+    font-size: 12px;
+  }
+
+  .transactions-table td:nth-child(2)::before,
+  .transactions-table td:nth-child(3)::before,
+  .transactions-table td:nth-child(4)::before {
+    margin-bottom: 3px;
+    font-size: 8px;
+    letter-spacing: .02em;
+  }
+
+  .transactions-table tbody tr.is-expense:focus-visible,
+  .transactions-table tbody tr.is-expense:hover,
+  .transactions-table tbody tr.is-expense:active {
+    background-color: #fbf1ed;
+    border-color: #f0ddd6;
+  }
+
+  .transactions-table tbody tr.is-income:focus-visible,
+  .transactions-table tbody tr.is-income:hover,
+  .transactions-table tbody tr.is-income:active {
+    background-color: #eef7ef;
+    border-color: #dcebdd;
+  }
+
+  .transactions-table tbody tr.is-expense:focus-visible td,
+  .transactions-table tbody tr.is-expense:hover td,
+  .transactions-table tbody tr.is-expense:active td,
+  .transactions-table tbody tr.is-income:focus-visible td,
+  .transactions-table tbody tr.is-income:hover td,
+  .transactions-table tbody tr.is-income:active td {
+    background: transparent;
+    background-image: none;
+    animation: none;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr {
+    background: #1e2a22;
+    border-color: #344238;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table td::before {
+    color: #a2b0a5;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active {
+    background-color: #392a27;
+    border-color: #59403a;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active {
+    background-color: #26382b;
+    border-color: #3d5641;
+  }
+
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:focus-visible td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:hover td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-expense:active td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:focus-visible td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:hover td,
+  .dashboard-app[data-theme="dark"] .transactions-table tbody tr.is-income:active td {
+    background: transparent;
+    background-image: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .transactions-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .transactions-advanced-button {
+    align-self: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-modal::after,
+  .transaction-details-dialog::after,
+  .transactions-table tbody tr:hover::after,
+  .transactions-table tbody tr:focus-visible::after,
+  .transactions-table tbody tr:active::after {
+    animation-duration: .01ms;
+  }
 }

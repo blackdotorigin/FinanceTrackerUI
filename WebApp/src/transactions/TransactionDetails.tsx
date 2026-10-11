@@ -26,15 +26,6 @@ function formatDate(date: string) {
   }).format(parsed);
 }
 
-function formatCreatedAt(date: string) {
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
 export default function TransactionDetails({
   transaction,
   currency,
@@ -132,28 +123,12 @@ export default function TransactionDetails({
                   : "Not specified"}
             </dd>
           </div>
-          <div>
-            <dt>Subcategory</dt>
-            <dd>{transaction.subCategory?.name || "None"}</dd>
-          </div>
-          <div>
-            <dt>Transaction type</dt>
-            <dd>{isIncome ? "Income" : "Expense"}</dd>
-          </div>
-          <div>
-            <dt>Transaction date</dt>
-            <dd>{formatDate(transaction.transactionDate)}</dd>
-          </div>
-          {transaction.createdAt && (
+          {transaction.subCategory && (
             <div>
-              <dt>Added on</dt>
-              <dd>{formatCreatedAt(transaction.createdAt)}</dd>
+              <dt>Subcategory</dt>
+              <dd>{transaction.subCategory.name}</dd>
             </div>
           )}
-          <div className="transaction-details-id">
-            <dt>Transaction ID</dt>
-            <dd title={transaction.id}>{transaction.id}</dd>
-          </div>
         </dl>
         <button
           className="transaction-details-done"

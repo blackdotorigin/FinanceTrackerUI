@@ -391,7 +391,7 @@ export default function AdvancedTransactions({
               return (
                 <button
                   aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. View details.`}
-                  className="advanced-transaction-row"
+                  className={`advanced-transaction-row is-${transaction.type.toLowerCase()}`}
                   key={transaction.id}
                   onClick={() => onSelectTransaction(transaction)}
                   type="button"

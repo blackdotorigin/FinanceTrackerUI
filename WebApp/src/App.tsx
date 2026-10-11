@@ -11,20 +11,22 @@ function BrandMark() {
     <a className="brand" href="/" aria-label="FinanceFlow home">
       <span className="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none">
-          <path
-            d="M7 22.5 13.2 16l4.3 4.1L25 11"
-            stroke="currentColor"
-            strokeWidth="2.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M19.4 11H25v5.6"
-            stroke="currentColor"
-            strokeWidth="2.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <g transform="translate(3.2 3.2) scale(.8)">
+            <path
+              d="M7 22.5 13.2 16l4.3 4.1L25 11"
+              stroke="currentColor"
+              strokeWidth="2.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M19.4 11H25v5.6"
+              stroke="currentColor"
+              strokeWidth="2.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
         </svg>
       </span>
       <span>financeflow</span>
