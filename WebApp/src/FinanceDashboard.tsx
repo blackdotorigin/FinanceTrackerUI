@@ -27,6 +27,13 @@ type Category = {
   subCategories?: { id: string; name: string }[];
 };
 
+type BudgetLimit = {
+  id: string;
+  categoryId: string;
+  subCategoryId: string | null;
+  limit: number;
+};
+
 type UserActivityDay = {
   date: string;
   active: boolean;
@@ -226,6 +233,33 @@ function parseCategories(value: unknown): Category[] {
   });
 }
 
+function parseBudgetLimit(value: unknown): BudgetLimit {
+  if (
+    !isObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.categoryId !== "string" ||
+    !(value.subCategoryId === null || typeof value.subCategoryId === "string") ||
+    typeof value.limit !== "number" ||
+    !Number.isFinite(value.limit) ||
+    value.limit <= 0
+  ) {
+    throw new Error("A budget limit in the server response was not in the expected format.");
+  }
+  return {
+    id: value.id,
+    categoryId: value.categoryId,
+    subCategoryId: value.subCategoryId,
+    limit: value.limit,
+  };
+}
+
+function parseBudgetLimits(value: unknown): BudgetLimit[] {
+  if (!Array.isArray(value)) {
+    throw new Error("The budget limits response was not in the expected format.");
+  }
+  return value.map(parseBudgetLimit);
+}
+
 function formatDate(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
@@ -416,11 +450,20 @@ export default function FinanceDashboard({
   const reportRequestId = useRef(0);
   const [reportCategoryType, setReportCategoryType] = useState<TransactionType>("EXPENSE");
   const [hoveredReportCategoryId, setHoveredReportCategoryId] = useState<string | null>(null);
-  const [budgetLimits, setBudgetLimits] = useState<Record<string, string>>({});
-  const [budgetStorageReady, setBudgetStorageReady] = useState(false);
-  const [budgetStorageLoadError, setBudgetStorageLoadError] = useState("");
-  const [budgetStorageWriteError, setBudgetStorageWriteError] = useState("");
-  const budgetStorageKey = `financeflow-budgets-${initialUsername.toLowerCase()}`;
+  const [budgetLimits, setBudgetLimits] = useState<BudgetLimit[]>([]);
+  const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [budgetError, setBudgetError] = useState("");
+  const [budgetLoadFailed, setBudgetLoadFailed] = useState(false);
+  const [budgetReload, setBudgetReload] = useState(0);
+  const [budgetSavingCategoryId, setBudgetSavingCategoryId] = useState<string | null>(null);
+  const [budgetDeletingCategoryId, setBudgetDeletingCategoryId] = useState<string | null>(null);
+  const [selectedBudgetCategoryId, setSelectedBudgetCategoryId] = useState<string | null>(null);
+  const [budgetEditing, setBudgetEditing] = useState(false);
+  const [pressedBudgetCategoryId, setPressedBudgetCategoryId] = useState<string | null>(null);
+  const [pressedTransactionId, setPressedTransactionId] = useState<string | null>(null);
+  const budgetDialogCloseRef = useRef<HTMLButtonElement>(null);
+  const budgetRequestId = useRef(0);
 
   useEffect(() => {
     tokenRef.current = accessToken;
@@ -429,48 +472,6 @@ export default function FinanceDashboard({
   useEffect(() => {
     window.localStorage.setItem("financeflow-theme", theme);
   }, [theme]);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(budgetStorageKey);
-      if (stored) {
-        const parsed: unknown = JSON.parse(stored);
-        if (!isObject(parsed)) {
-          throw new Error("Saved budget limits were not in the expected format.");
-        }
-        const validBudgets: Record<string, string> = {};
-        Object.entries(parsed).forEach(([id, value]) => {
-          if (
-            typeof value === "string" &&
-            value.trim() !== "" &&
-            Number.isFinite(Number(value)) &&
-            Number(value) > 0
-          ) {
-            validBudgets[id] = value;
-          }
-        });
-        setBudgetLimits(validBudgets);
-      }
-    } catch (caught) {
-      setBudgetStorageLoadError(
-        caught instanceof Error ? caught.message : "Saved budgets could not be loaded.",
-      );
-    } finally {
-      setBudgetStorageReady(true);
-    }
-  }, [budgetStorageKey]);
-
-  useEffect(() => {
-    if (!budgetStorageReady) return;
-    try {
-      window.localStorage.setItem(budgetStorageKey, JSON.stringify(budgetLimits));
-      setBudgetStorageWriteError("");
-    } catch (caught) {
-      setBudgetStorageWriteError(
-        caught instanceof Error ? caught.message : "Budget changes could not be saved on this device.",
-      );
-    }
-  }, [budgetLimits, budgetStorageKey, budgetStorageReady]);
 
   useScrollZoom(loading, activeNav);
 
@@ -502,6 +503,47 @@ export default function FinanceDashboard({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [formOpen, submitting]);
+
+  useEffect(() => {
+    if (
+      !selectedBudgetCategoryId ||
+      activeNav !== "reports" ||
+      reportTab !== "budgets"
+    ) return;
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    budgetDialogCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedBudgetCategoryId(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+      previousFocus?.focus();
+    };
+  }, [activeNav, reportTab, selectedBudgetCategoryId]);
+
+  useEffect(() => {
+    if (activeNav !== "reports" || reportTab !== "budgets") {
+      setSelectedBudgetCategoryId(null);
+    }
+  }, [activeNav, reportTab]);
+
+  useEffect(() => {
+    if (!pressedBudgetCategoryId) return;
+    const timeout = window.setTimeout(() => setPressedBudgetCategoryId(null), 650);
+    return () => window.clearTimeout(timeout);
+  }, [pressedBudgetCategoryId]);
+
+  useEffect(() => {
+    if (!pressedTransactionId) return;
+    const timeout = window.setTimeout(() => setPressedTransactionId(null), 650);
+    return () => window.clearTimeout(timeout);
+  }, [pressedTransactionId]);
 
   const apiFetch = useCallback(
     async (path: string, init: RequestInit = {}) => {
@@ -739,6 +781,115 @@ export default function FinanceDashboard({
     }
   }, [apiFetch, categoriesLoaded, categoriesLoading]);
 
+  useEffect(() => {
+    if (activeNav !== "reports" || reportTab !== "budgets") return;
+    const currentRequest = ++budgetRequestId.current;
+    setBudgetLoading(true);
+    setBudgetError("");
+    setBudgetLoadFailed(false);
+    void apiFetch("/api/v1/budget-limits").then(async (response) => {
+      if (!response.ok) {
+        throw new Error(getErrorMessage(response.status, "load your budget limits"));
+      }
+      return parseBudgetLimits(await response.json());
+    }).then((limits) => {
+      if (currentRequest !== budgetRequestId.current) return;
+      setBudgetLimits(limits);
+      setBudgetLoadFailed(false);
+      setBudgetDrafts(Object.fromEntries(
+        limits.filter((item) => item.subCategoryId === null)
+          .map((item) => [item.categoryId, String(item.limit)]),
+      ));
+    }).catch((caught: unknown) => {
+      if (currentRequest !== budgetRequestId.current) return;
+      setBudgetError(
+        caught instanceof Error ? caught.message : "We couldn’t load your budget limits. Please try again.",
+      );
+      setBudgetLoadFailed(true);
+    }).finally(() => {
+      if (currentRequest === budgetRequestId.current) setBudgetLoading(false);
+    });
+    return () => {
+      if (currentRequest === budgetRequestId.current) budgetRequestId.current += 1;
+    };
+  }, [activeNav, apiFetch, budgetReload, reportTab]);
+
+  async function saveBudgetLimit(categoryId: string) {
+    const rawLimit = budgetDrafts[categoryId]?.trim() ?? "";
+    const numberLimit = Number(rawLimit);
+    const [integerPart = ""] = rawLimit.split(".");
+    const integerDigits = integerPart.replace(/^0+(?=\d)/, "").length;
+    if (
+      !/^\d+(?:\.\d{0,4})?$/.test(rawLimit) ||
+      integerDigits > 15 ||
+      !Number.isFinite(numberLimit) ||
+      numberLimit <= 0
+    ) {
+      setBudgetError("Enter a positive limit with up to 15 integer digits and 4 decimal places.");
+      setBudgetLoadFailed(false);
+      return;
+    }
+
+    const existingLimit = budgetLimits.find(
+      (item) => item.categoryId === categoryId && item.subCategoryId === null,
+    );
+    setBudgetSavingCategoryId(categoryId);
+    setBudgetError("");
+    setBudgetLoadFailed(false);
+    try {
+      const response = await apiFetch("/api/v1/budget-limits", {
+        method: existingLimit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId, limit: numberLimit }),
+      });
+      if (!response.ok) {
+        throw new Error(getErrorMessage(response.status, existingLimit ? "update your budget limit" : "set your budget limit"));
+      }
+      const savedLimit = parseBudgetLimit(await response.json());
+      if (savedLimit.categoryId !== categoryId || savedLimit.subCategoryId !== null) {
+        throw new Error("The saved budget limit did not match the selected category.");
+      }
+      setBudgetLimits((current) => [
+        ...current.filter((item) => !(item.categoryId === categoryId && item.subCategoryId === null)),
+        savedLimit,
+      ]);
+      setBudgetDrafts((current) => ({ ...current, [categoryId]: String(savedLimit.limit) }));
+      setBudgetEditing(false);
+    } catch (caught) {
+      setBudgetError(
+        caught instanceof Error ? caught.message : "We couldn’t save the budget limit. Please try again.",
+      );
+    } finally {
+      setBudgetSavingCategoryId(null);
+    }
+  }
+
+  async function deleteBudgetLimit(categoryId: string) {
+    const query = new URLSearchParams({ categoryId });
+    setBudgetDeletingCategoryId(categoryId);
+    setBudgetError("");
+    setBudgetLoadFailed(false);
+    try {
+      const response = await apiFetch(`/api/v1/budget-limits?${query.toString()}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(getErrorMessage(response.status, "delete your budget limit"));
+      }
+      setBudgetLimits((current) =>
+        current.filter((item) => !(item.categoryId === categoryId && item.subCategoryId === null)),
+      );
+      setBudgetDrafts((current) => ({ ...current, [categoryId]: "" }));
+      setBudgetEditing(true);
+    } catch (caught) {
+      setBudgetError(
+        caught instanceof Error ? caught.message : "We couldn’t delete the budget limit. Please try again.",
+      );
+    } finally {
+      setBudgetDeletingCategoryId(null);
+    }
+  }
+
   const currency = user?.defaultCurrency || transactions[0]?.currency || "INR";
   const totals = useMemo(() => {
     return transactions.reduce(
@@ -835,6 +986,33 @@ export default function FinanceDashboard({
       ).sort((first, second) => second.amount - first.amount),
     };
   }, [reportCategoryType, reportMonth, reportTransactions]);
+
+  const budgetCategories = useMemo(() => {
+    const spentByCategory = new Map<string, number>();
+    reportData.selectedMonthTransactions.forEach((transaction) => {
+      if (transaction.type !== "EXPENSE" || !transaction.category) return;
+      spentByCategory.set(
+        transaction.category.id,
+        (spentByCategory.get(transaction.category.id) ?? 0) + transaction.amount,
+      );
+    });
+    return categories
+      .filter((category) => category.type === "EXPENSE")
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        amount: spentByCategory.get(category.id) ?? 0,
+      }))
+      .sort((first, second) => second.amount - first.amount || first.name.localeCompare(second.name));
+  }, [categories, reportData.selectedMonthTransactions]);
+  const selectedBudgetCategory = budgetCategories.find(
+    (category) => category.id === selectedBudgetCategoryId,
+  );
+  const selectedBudgetLimit = selectedBudgetCategory
+    ? budgetLimits.find(
+      (item) => item.categoryId === selectedBudgetCategory.id && item.subCategoryId === null,
+    )
+    : undefined;
 
   const activityCalendar = useMemo(() => {
     if (!userActivity) return null;
@@ -938,6 +1116,7 @@ export default function FinanceDashboard({
     setProfileOpen(false);
     if (section === "profile") void loadProfile();
     if (section === "transactions") void loadCategories();
+    if (section === "reports" && reportTab === "budgets") void loadCategories();
     if (section === "overview") void refreshTransactions();
     if (section === "overview") {
       requestAnimationFrame(() => {
@@ -1470,7 +1649,10 @@ export default function FinanceDashboard({
                     className={reportTab === tab ? "is-active" : ""}
                     id={`report-tab-${tab}`}
                     key={tab}
-                    onClick={() => setReportTab(tab)}
+                    onClick={() => {
+                      setReportTab(tab);
+                      if (tab === "budgets") void loadCategories();
+                    }}
                     role="tab"
                     type="button"
                   >
@@ -1737,76 +1919,262 @@ export default function FinanceDashboard({
                     <div>
                       <p className="eyebrow">Spend with intention</p>
                       <h2>Your monthly budgets</h2>
-                      <p>Set a limit for each category. Your budgets are saved on this device.</p>
-                    </div>
-                    <div className="budget-total-card">
-                      <span>Spent this month</span>
-                      <strong>{formatMoney(reportData.monthTotals.EXPENSE, currency)}</strong>
+                      <p>Track spending against your category limits for {formatMonth(reportMonth)}.</p>
                     </div>
                   </div>
-                  {budgetStorageLoadError && <p className="report-storage-error" role="alert">{budgetStorageLoadError}</p>}
-                  {budgetStorageWriteError && <p className="report-storage-error" role="alert">{budgetStorageWriteError}</p>}
-                  {reportData.expenseCategories.length ? (
-                    <div className="report-card budget-list">
-                      {reportData.expenseCategories.map((category, index) => {
-                        const limit = Number(budgetLimits[category.id]) || 0;
-                        const used = limit ? Math.min(100, category.amount / limit * 100) : 0;
-                        const overBudget = limit > 0 && category.amount > limit;
-                        const budgetStatus = limit
-                          ? overBudget
-                            ? `${Math.round(category.amount / limit * 100)}% of limit · ${formatMoney(category.amount - limit, currency)} over`
-                            : `${Math.round(category.amount / limit * 100)}% used · ${formatMoney(limit - category.amount, currency)} left`
-                          : "No limit set";
+                  {budgetError && !selectedBudgetCategory && (
+                    <div className="report-storage-error" role="alert">
+                      {budgetError}{" "}
+                      {budgetLoadFailed && (
+                        <button className="budget-retry" onClick={() => setBudgetReload((current) => current + 1)} type="button">
+                          Reload limits
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {categoriesError && !selectedBudgetCategory && (
+                    <div className="report-storage-error" role="alert">
+                      {categoriesError}{" "}
+                      <button className="budget-retry" onClick={() => void loadCategories()} type="button">
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                  {reportLoading || budgetLoading || categoriesLoading ? (
+                    <div className="report-card report-empty-card budget-loading" role="status">
+                      <p>Loading budget data…</p>
+                    </div>
+                  ) : budgetError || categoriesError ? (
+                    <div className="report-card report-empty-card budget-loading" role="status">
+                      <p>Budget data is unavailable until it can be loaded.</p>
+                    </div>
+                  ) : budgetCategories.length ? (
+                    <div className="budget-list">
+                      {budgetCategories.map((category, index) => {
+                        const existingLimit = budgetLimits.find(
+                          (item) => item.categoryId === category.id && item.subCategoryId === null,
+                        );
+                        const limit = existingLimit?.limit ?? 0;
+                        const percentage = limit ? category.amount / limit * 100 : 0;
+                        const used = Math.min(100, percentage);
+                        const progressLevel = percentage >= 90
+                          ? "is-critical"
+                          : percentage >= 70
+                            ? "is-high"
+                            : percentage >= 30
+                              ? "is-warning"
+                              : "is-safe";
+                        const budgetStatus = !limit
+                          ? "No limit set"
+                          : percentage > 100
+                            ? `${Math.round(percentage)}% used · ${formatMoney(category.amount - limit, currency)} over`
+                            : `${Math.round(percentage)}% of limit used`;
                         return (
-                          <div className="budget-row" key={category.id}>
-                            <div className="budget-category">
-                              <span className="report-legend-dot" style={{ backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length] }} />
-                              <div><strong>{category.name}</strong><small>{formatMoney(category.amount, currency)} spent</small></div>
-                            </div>
-                            <div className={`budget-progress-wrap${overBudget ? " is-over-budget" : ""}`}>
-                              <div
-                                aria-label={`${category.name} budget usage`}
-                                aria-valuemax={100}
-                                aria-valuemin={0}
-                                aria-valuenow={used}
-                                aria-valuetext={budgetStatus}
-                                className="budget-progress-track"
-                                role="progressbar"
-                              >
-                                <span className={overBudget ? "is-over-budget" : ""} style={{ width: `${used}%` }} />
-                              </div>
-                              <small>{budgetStatus}</small>
-                            </div>
-                            <label className="budget-limit-field">
-                              <span>Monthly limit</span>
-                              <span className="budget-limit-input">
-                                <span>{currency}</span>
-                                <input
-                                  aria-label={`${category.name} monthly budget limit`}
-                                  min="0"
-                                  onChange={(event) => setBudgetLimits((current) => ({
-                                    ...current,
-                                    [category.id]: event.target.value,
-                                  }))}
-                                  placeholder="Set limit"
-                                  step="0.01"
-                                  type="number"
-                                  value={budgetLimits[category.id] ?? ""}
+                          <button
+                            aria-label={`${category.name} budget. ${budgetStatus}. ${limit ? `Limit ${formatMoney(limit, currency)}.` : "Tap to set limit."}`}
+                            className={`budget-card ${limit ? "has-limit" : "no-limit"}${pressedBudgetCategoryId === category.id ? " is-pressed" : ""}`}
+                            key={category.id}
+                            onPointerDown={() => setPressedBudgetCategoryId(category.id)}
+                            onClick={() => {
+                              setBudgetError("");
+                              setBudgetDrafts((current) => ({
+                                ...current,
+                                [category.id]: current[category.id] ?? (existingLimit ? String(existingLimit.limit) : ""),
+                              }));
+                              setBudgetEditing(!existingLimit);
+                              setSelectedBudgetCategoryId(category.id);
+                            }}
+                            type="button"
+                          >
+                            <span className="budget-card-heading">
+                              <span className="budget-card-category">
+                                <span
+                                  className="report-legend-dot"
+                                  style={{ backgroundColor: REPORT_COLORS[index % REPORT_COLORS.length] }}
                                 />
+                                <strong>{category.name}</strong>
                               </span>
-                            </label>
-                          </div>
+                              <span className="budget-card-chevron" aria-hidden="true">↗</span>
+                            </span>
+                            <span className="budget-card-spend">
+                              <strong>{formatMoney(category.amount, currency)}</strong>
+                              <small>spent this month</small>
+                            </span>
+                            {limit ? (
+                              <>
+                                <span className="budget-card-limit">of {formatMoney(limit, currency)} limit</span>
+                                <span className="budget-progress-track is-animated">
+                                  <span className={progressLevel} style={{ width: `${used}%` }} />
+                                </span>
+                                <span className="budget-card-status">{budgetStatus}</span>
+                              </>
+                            ) : (
+                              <span className="budget-card-set-prompt">Tap to set limit <span aria-hidden="true">＋</span></span>
+                            )}
+                          </button>
                         );
                       })}
                     </div>
                   ) : (
                     <div className="report-card report-empty-card">
                       <span className="reports-illustration"><Icon name="reports" /></span>
-                      <h3>Your categories will show up here.</h3>
-                      <p>Add an expense transaction and you can set a monthly limit for its category.</p>
+                      <h3>No expense categories yet.</h3>
+                      <p>Add an expense category to set a monthly budget limit.</p>
                     </div>
                   )}
-                  <p className="report-footnote">Budget limits are stored in this browser and are specific to your signed-in username.</p>
+                  <p className="report-footnote">Budget limits are securely synced to your account. Spending reflects transactions in {formatMonth(reportMonth)}.</p>
+                  {selectedBudgetCategory && (
+                    <div
+                      className="budget-dialog-backdrop"
+                      onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) setSelectedBudgetCategoryId(null);
+                      }}
+                    >
+                      <section
+                        aria-labelledby="budget-dialog-title"
+                        aria-modal="true"
+                        className="budget-limit-dialog"
+                        role="dialog"
+                      >
+                        <div className="budget-dialog-topline">
+                          <div>
+                            <p className="eyebrow">{formatMonth(reportMonth)} budget</p>
+                            <h2 id="budget-dialog-title">{selectedBudgetCategory.name}</h2>
+                          </div>
+                          <button
+                            aria-label="Close budget details"
+                            className="transaction-details-close"
+                            onClick={() => setSelectedBudgetCategoryId(null)}
+                            ref={budgetDialogCloseRef}
+                            type="button"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </div>
+                        <p className="budget-dialog-spend">{formatMoney(selectedBudgetCategory.amount, currency)}</p>
+                        <p className="budget-dialog-caption">spent in {formatMonth(reportMonth)}</p>
+                        {selectedBudgetLimit ? (
+                          <>
+                            <div className="budget-dialog-limit">
+                              <span>Monthly limit</span>
+                              <strong>{formatMoney(selectedBudgetLimit.limit, currency)}</strong>
+                            </div>
+                            <div
+                              aria-label={`${selectedBudgetCategory.name} budget usage`}
+                              aria-valuemax={100}
+                              aria-valuemin={0}
+                              aria-valuenow={Math.min(100, selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100)}
+                              aria-valuetext={`${Math.round(selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100)}% used`}
+                              className="budget-progress-track is-animated"
+                              role="progressbar"
+                            >
+                              <span
+                                className={selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100 >= 90
+                                  ? "is-critical"
+                                  : selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100 >= 70
+                                    ? "is-high"
+                                    : selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100 >= 30
+                                      ? "is-warning"
+                                      : "is-safe"}
+                                style={{
+                                  width: `${Math.min(100, selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <p className="budget-dialog-status">
+                              {selectedBudgetCategory.amount > selectedBudgetLimit.limit
+                                ? `${Math.round(selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100)}% used · ${formatMoney(selectedBudgetCategory.amount - selectedBudgetLimit.limit, currency)} over limit`
+                                : `${Math.round(selectedBudgetCategory.amount / selectedBudgetLimit.limit * 100)}% of your limit used`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="budget-dialog-no-limit">Set a monthly limit to track your spending here.</p>
+                        )}
+                        {budgetEditing && (
+                          <label className="budget-limit-field budget-dialog-input-label">
+                            <span>{selectedBudgetLimit ? "New monthly limit" : "Monthly limit"}</span>
+                            <span className="budget-limit-input">
+                              <span>{currency}</span>
+                              <input
+                                aria-label={`${selectedBudgetCategory.name} monthly budget limit`}
+                                autoFocus
+                                min="0"
+                                onChange={(event) => setBudgetDrafts((current) => ({
+                                  ...current,
+                                  [selectedBudgetCategory.id]: event.target.value,
+                                }))}
+                                placeholder="Enter a limit"
+                                step="0.0001"
+                                type="number"
+                                value={budgetDrafts[selectedBudgetCategory.id] ?? ""}
+                              />
+                            </span>
+                          </label>
+                        )}
+                        {budgetError && <p className="budget-dialog-error" role="alert">{budgetError}</p>}
+                        <div className="budget-dialog-actions">
+                          {budgetEditing ? (
+                            <>
+                              <button
+                                className="budget-dialog-primary"
+                                disabled={budgetSavingCategoryId === selectedBudgetCategory.id}
+                                onClick={() => void saveBudgetLimit(selectedBudgetCategory.id)}
+                                type="button"
+                              >
+                                {budgetSavingCategoryId === selectedBudgetCategory.id
+                                  ? "Saving…"
+                                  : selectedBudgetLimit
+                                    ? "Save changes"
+                                    : "Set limit"}
+                              </button>
+                              {selectedBudgetLimit && (
+                                <button
+                                  className="budget-dialog-secondary"
+                                  onClick={() => {
+                                    setBudgetDrafts((current) => ({
+                                      ...current,
+                                      [selectedBudgetCategory.id]: String(selectedBudgetLimit.limit),
+                                    }));
+                                    setBudgetEditing(false);
+                                    setBudgetError("");
+                                  }}
+                                  type="button"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="budget-dialog-primary"
+                                onClick={() => {
+                                  setBudgetDrafts((current) => ({
+                                    ...current,
+                                    [selectedBudgetCategory.id]: String(selectedBudgetLimit?.limit ?? ""),
+                                  }));
+                                  setBudgetEditing(true);
+                                }}
+                                type="button"
+                              >
+                                Edit limit
+                              </button>
+                              <button
+                                className="budget-dialog-secondary is-delete"
+                                disabled={budgetDeletingCategoryId === selectedBudgetCategory.id}
+                                onClick={() => void deleteBudgetLimit(selectedBudgetCategory.id)}
+                                type="button"
+                              >
+                                {budgetDeletingCategoryId === selectedBudgetCategory.id ? "Deleting…" : "Delete"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </section>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-trends">
@@ -2219,8 +2587,9 @@ export default function FinanceDashboard({
                     {visibleTransactions.map((transaction) => (
                       <tr
                         aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. Press Enter to view details.`}
-                        className={transaction.type === "INCOME" ? "is-income" : "is-expense"}
+                        className={`${transaction.type === "INCOME" ? "is-income" : "is-expense"}${pressedTransactionId === transaction.id ? " is-pressed" : ""}`}
                         key={transaction.id}
+                        onPointerDown={() => setPressedTransactionId(transaction.id)}
                         onClick={() => setSelectedTransaction(transaction)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {

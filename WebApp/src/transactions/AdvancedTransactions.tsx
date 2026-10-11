@@ -108,7 +108,14 @@ export default function AdvancedTransactions({
   const [toDate, setToDate] = useState("");
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState("");
+  const [pressedTransactionId, setPressedTransactionId] = useState<string | null>(null);
   const requestId = useRef(0);
+
+  useEffect(() => {
+    if (!pressedTransactionId) return;
+    const timeout = window.setTimeout(() => setPressedTransactionId(null), 650);
+    return () => window.clearTimeout(timeout);
+  }, [pressedTransactionId]);
 
   useEffect(() => {
     const currentRequest = ++requestId.current;
@@ -391,8 +398,9 @@ export default function AdvancedTransactions({
               return (
                 <button
                   aria-label={`${transaction.type === "INCOME" ? "Income" : "Expense"}: ${transaction.description || transaction.category?.name || "Transaction"}, ${formatMoney(transaction.amount, currency)}, ${formatDate(transaction.transactionDate)}. View details.`}
-                  className={`advanced-transaction-row is-${transaction.type.toLowerCase()}`}
+                  className={`advanced-transaction-row is-${transaction.type.toLowerCase()}${pressedTransactionId === transaction.id ? " is-pressed" : ""}`}
                   key={transaction.id}
+                  onPointerDown={() => setPressedTransactionId(transaction.id)}
                   onClick={() => onSelectTransaction(transaction)}
                   type="button"
                 >

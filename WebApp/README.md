@@ -29,6 +29,11 @@ their selected week, month, or year using explicit `from` and `to` dates, so
 historical chart totals are based on the selected period rather than a recent
 transaction subset.
 
+Reports > Budgets loads and saves category-wide monthly limits through the
+authenticated `/api/v1/budget-limits` endpoints. Budget usage is calculated
+from the selected report month's transactions and visualized with green,
+yellow, orange, and red progress levels.
+
 ## Deploy to Cloudflare Pages
 
 Connect the GitHub repository from **Cloudflare → Workers & Pages → Create
