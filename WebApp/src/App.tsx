@@ -534,7 +534,7 @@ export default function App() {
   }, [handleMobileOAuthCallback]);
 
   useEffect(() => {
-    if (accessToken || isOAuthCallback || isMobileOAuthCallback || isRestoringSession) return;
+    if (accessToken || isOAuthCallback || isMobileOAuthCallback) return;
 
     const welcomeStartedAt = window.performance.now();
     const welcomeTimer = window.setTimeout(() => {
@@ -575,7 +575,7 @@ export default function App() {
       clearInterval(countdownTimer);
       clearTimeout(audioTimer);
     };
-  }, [accessToken, isOAuthCallback, isMobileOAuthCallback, isRestoringSession]);
+  }, [accessToken, isOAuthCallback, isMobileOAuthCallback]);
 
   useEffect(() => {
     if (!isOAuthCallback || isMobileOAuthCallback) return;
