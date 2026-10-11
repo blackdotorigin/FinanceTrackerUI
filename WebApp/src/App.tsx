@@ -739,6 +739,20 @@ export default function App() {
     }
   }
 
+  if (isRestoringSession) {
+    return (
+      <main className="page-shell">
+        <div className="success-card" role="status" aria-live="polite">
+          <BrandMark />
+          <span className="success-icon loading-icon" aria-hidden="true" />
+          <p className="eyebrow">Welcome back</p>
+          <h1>Restoring your session.</h1>
+          <p className="success-copy">We’re securely reconnecting your account.</p>
+        </div>
+      </main>
+    );
+  }
+
   if (showWelcome && !accessToken) {
     return <LuxuryWelcomeScreen secondsRemaining={welcomeSecondsRemaining} />;
   }

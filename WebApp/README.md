@@ -84,6 +84,10 @@ Docker image. Both the web build and APK use the Render backend by default.
   alone cannot return a usable session to the Capacitor WebView.
 - The access token stays in React memory only. It is not written to local
   storage, session storage, a cookie, or a URL.
+- On Android, the app restores its session from the API's persistent refresh
+  cookie on startup. The API must allow credentialed requests from the
+  Capacitor WebView origin and issue the cookie as `SameSite=None; Secure`;
+  the refresh-token lifetime is configured by the backend, not this frontend.
 
 For OAuth and cross-origin password sign-in to work, the API must allow the
 frontend origin with credentials, and its refresh cookie/CORS settings must

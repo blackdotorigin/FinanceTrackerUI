@@ -257,12 +257,22 @@ fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
 Use `credentials: "include"` for logout as well. The backend CORS configuration
 allows the configured frontend origin, credentials, and the `Authorization` and
 `Content-Type` headers. The frontend origin must exactly match the backend's
-configured `FRONTEND_URL`.
+configured `FRONTEND_URL`. For the default Capacitor Android configuration, also
+allow the WebView origin `https://localhost` with credentials.
 
-The refresh cookie is `HttpOnly`, `SameSite=Lax`, and its `Secure` attribute is
-controlled by backend configuration. Production deployments should use HTTPS
-and enable secure cookies. Do not use the backend's local-only development
-settings as production auth configuration.
+The refresh cookie is `HttpOnly`. For cross-site frontend/API requests and the
+Capacitor Android WebView, the backend must issue it with
+`SameSite=None; Secure`; `SameSite=Lax` prevents the cross-site refresh requests
+from sending the cookie. The Android app also enables third-party cookies for
+its WebView. Production deployments must use HTTPS and enable secure cookies.
+Do not use the backend's local-only development settings as production auth
+configuration.
+
+The frontend cannot extend a refresh token's server-side lifetime. Configure
+the backend refresh-token lifetime to at least 24 hours; the documented
+backend default is 30 days. The app refreshes short-lived access tokens using
+the HttpOnly cookie, so a valid refresh token keeps the user signed in across
+app restarts.
 
 ## Common errors
 
