@@ -1,0 +1,2302 @@
+.dues-page {
+  max-width: 1060px;
+  padding-top: 9px;
+}
+
+.rail-nav-link:disabled {
+  cursor: wait;
+  opacity: .56;
+}
+
+.dues-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 246px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  margin-bottom: 27px;
+  padding: clamp(22px, 4vw, 38px);
+  color: #f3f8f2;
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(186, 224, 177, .28), transparent 38%),
+    linear-gradient(125deg, #1b3c2d 0%, #315c43 56%, #55775d 100%);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 26px;
+  box-shadow: 0 20px 48px rgba(35, 67, 45, .2), inset 0 1px 0 rgba(255, 255, 255, .26);
+  animation: due-arrive .5s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.dues-hero::after {
+  position: absolute;
+  z-index: -1;
+  inset: -80% auto -80% -40%;
+  width: 34%;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .105), transparent);
+  transform: rotate(24deg);
+  animation: due-shine 8s ease-in-out infinite;
+}
+
+.dues-orb {
+  position: absolute;
+  z-index: -1;
+  width: 170px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(240, 255, 231, .18);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dues-orb-one {
+  top: -78px;
+  right: 12%;
+  box-shadow: 0 0 0 22px rgba(240, 255, 231, .035), 0 0 0 44px rgba(240, 255, 231, .025);
+}
+
+.dues-orb-two {
+  right: -52px;
+  bottom: -115px;
+  width: 230px;
+}
+
+.dues-hero-copy,
+.dues-hero-bottom {
+  position: relative;
+  z-index: 1;
+}
+
+.dues-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 15px;
+  color: #d3e2d0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.dues-eyebrow svg {
+  width: 17px;
+  height: 17px;
+}
+
+.dues-hero h1 {
+  max-width: 620px;
+  margin: 0;
+  color: #f5faf3;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(29px, 4vw, 43px);
+  font-weight: 600;
+  letter-spacing: -1.7px;
+  line-height: 1.13;
+}
+
+.dues-hero-copy > p:last-child {
+  max-width: 530px;
+  margin: 12px 0 25px;
+  color: #d1dfd0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.dues-hero-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.dues-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #d8e5d5;
+  font-size: 11px;
+}
+
+.dues-summary-count {
+  display: grid;
+  width: 37px;
+  height: 37px;
+  place-items: center;
+  color: #f6fff1;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 12px;
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.dues-summary > span:last-child {
+  display: grid;
+  gap: 3px;
+  font-weight: 600;
+}
+
+.dues-summary small {
+  color: #bcd0bc;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.dues-add-button,
+.dues-submit-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  color: #24432f;
+  background: linear-gradient(135deg, #f1faec, #d9ebd2);
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(10, 29, 18, .13), inset 0 1px 0 #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  transition: transform .18s, box-shadow .18s, opacity .18s;
+}
+
+.dues-add-button:hover:not(:disabled),
+.dues-submit-button:hover:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(10, 29, 18, .2), inset 0 1px 0 #fff;
+  transform: translateY(-2px);
+}
+
+.dues-add-button:disabled,
+.dues-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.dues-add-button svg,
+.dues-submit-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.dues-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 13px 15px;
+  color: #914c44;
+  background: #fff4f1;
+  border: 1px solid #f1d9d2;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dues-error button {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  color: #744e43;
+  background: #fff;
+  border: 1px solid #edd8d2;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-categories {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 0 18px;
+  padding: 2px 1px 9px;
+  scrollbar-width: thin;
+}
+
+.dues-categories button {
+  min-height: 35px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 0 11px;
+  color: #6e7c71;
+  background: rgba(255, 255, 255, .76);
+  border: 1px solid #e7ece5;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  transition: background .18s, color .18s, border-color .18s;
+}
+
+.dues-categories button span {
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 4px;
+  color: #77877a;
+  background: #f0f3ef;
+  border-radius: 10px;
+  font-size: 9px;
+}
+
+.dues-categories button.is-active {
+  color: #fff;
+  background: #345b41;
+  border-color: #345b41;
+}
+
+.dues-categories button.is-active span {
+  color: #fff;
+  background: rgba(255, 255, 255, .17);
+}
+
+.dues-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 790px;
+  gap: 12px;
+  padding-bottom: 15px;
+}
+
+.dues-list-heading {
+  max-width: 790px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 10px 0 15px;
+}
+
+.dues-list-heading h2 {
+  margin: 3px 0 0;
+  color: #314637;
+  font-family: "Manrope", sans-serif;
+  font-size: 21px;
+  letter-spacing: -.7px;
+}
+
+.dues-list-heading > span {
+  padding-bottom: 3px;
+  color: #89948b;
+  font-size: 9px;
+}
+
+.dues-list-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #7b8a7d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dues-list-eyebrow svg {
+  width: 14px;
+  height: 14px;
+  color: #608165;
+}
+
+.due-card {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  overflow: hidden;
+  padding: 14px 16px 12px;
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(224, 239, 218, .58), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(246, 250, 244, .84));
+  border: 1px solid rgba(224, 232, 222, .9);
+  border-radius: 17px;
+  box-shadow: 0 8px 22px rgba(34, 53, 39, .055), inset 0 1px 0 rgba(255, 255, 255, .95);
+  animation: due-arrive .4s both;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+
+.due-card::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  opacity: 0;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, .55) 47%, transparent 70%);
+  transform: translateX(-100%);
+  transition: opacity .2s;
+  pointer-events: none;
+}
+
+.due-card:hover {
+  border-color: #d4e2d1;
+  box-shadow: 0 13px 28px rgba(34, 53, 39, .1), inset 0 1px 0 #fff;
+  transform: translateY(-3px);
+}
+
+.due-card:hover::after {
+  opacity: 1;
+  animation: due-card-shine .9s ease-out;
+}
+
+.due-card-overdue {
+  border-left: 3px solid #d28b76;
+}
+
+.due-card-today {
+  border-left: 3px solid #e5b557;
+}
+
+.due-card-soon {
+  border-left: 3px solid #d7bd69;
+}
+
+.due-card-upcoming {
+  border-left: 3px solid #9cbea0;
+}
+
+.due-card-glint {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  width: 145px;
+  height: 112px;
+  background: radial-gradient(ellipse at top right, rgba(189, 218, 179, .21), transparent 70%);
+  pointer-events: none;
+}
+
+.due-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.due-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #47724e;
+  background: linear-gradient(145deg, #eaf5e5, #d7ebd0);
+  border: 1px solid rgba(255, 255, 255, .86);
+  border-radius: 12px;
+  box-shadow: 0 5px 13px rgba(56, 93, 59, .12), inset 0 1px 0 #fff;
+  font-family: "Manrope", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.due-logo-subscriptions {
+  color: #8a5b9c;
+  background: linear-gradient(145deg, #f7eafe, #ead6f2);
+  box-shadow: 0 5px 13px rgba(123, 82, 147, .13), inset 0 1px 0 #fff;
+}
+
+.due-logo-friends_family,
+.due-logo-family_support {
+  color: #ba6073;
+  background: linear-gradient(145deg, #ffedf0, #f8d5df);
+  box-shadow: 0 5px 13px rgba(171, 77, 101, .12), inset 0 1px 0 #fff;
+}
+
+.due-logo-debt_repayment {
+  color: #417898;
+  background: linear-gradient(145deg, #e7f4fb, #cfe7f2);
+}
+
+.due-logo-investments,
+.due-logo-chit_funds {
+  color: #9a7134;
+  background: linear-gradient(145deg, #fff4d9, #f6e3b4);
+}
+
+.due-logo-housing_utilities {
+  color: #597a4e;
+  background: linear-gradient(145deg, #edf5df, #dcebc7);
+}
+
+.due-logo-healthcare {
+  color: #478883;
+  background: linear-gradient(145deg, #e4f8f3, #c9ece4);
+}
+
+.due-logo-transportation,
+.due-logo-travel {
+  color: #5776a4;
+  background: linear-gradient(145deg, #e9f0ff, #d3e0f7);
+}
+
+.due-category-chip {
+  max-width: min(55%, 260px);
+  overflow: hidden;
+  padding: 5px 9px;
+  color: #59745c;
+  background: #eef5eb;
+  border: 1px solid #e3ede0;
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.due-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.due-card-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #839087;
+  background: rgba(255, 255, 255, .7);
+  border: 1px solid #e9eee8;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+
+.due-card-actions button:hover:not(:disabled) {
+  color: #385a40;
+  background: #f3f8f0;
+  border-color: #d7e5d2;
+}
+
+.due-card-actions button:disabled {
+  cursor: wait;
+  opacity: .5;
+}
+
+.due-card-actions svg {
+  width: 15px;
+  height: 15px;
+}
+
+.due-card-open {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 2px 1px 1px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.due-card-open:focus-visible {
+  border-radius: 8px;
+  outline: 3px solid rgba(100, 144, 101, .3);
+  outline-offset: 4px;
+}
+
+.due-card-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.due-card-title-row > strong {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #2e4335;
+  font-family: "Manrope", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.35px;
+}
+
+.due-date-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #718076;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.due-date-line svg {
+  width: 14px;
+  height: 14px;
+  color: #829183;
+}
+
+.due-card-title-row .due-date-line {
+  flex: 0 0 auto;
+}
+
+.due-card-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 14px;
+  color: #758378;
+  font-size: 10px;
+}
+
+.due-card-summary > strong {
+  color: #35583d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.due-card-description {
+  overflow: hidden;
+  color: #8b968c;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.due-card-more {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 5px;
+  margin-top: 2px;
+  color: #587a5d;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.due-card-more svg {
+  width: 13px;
+  height: 13px;
+  transition: transform .18s;
+}
+
+.due-card-open:hover .due-card-more svg {
+  transform: translateX(3px);
+}
+
+.due-date-line.is-soon,
+.due-date-line.is-today {
+  color: #a46a2e;
+}
+
+.due-date-line.is-soon svg,
+.due-date-line.is-today svg {
+  color: #bd8444;
+}
+
+.due-date-line.is-overdue {
+  color: #ad5148;
+}
+
+.due-date-line.is-overdue svg {
+  color: #bb6458;
+}
+
+.due-card-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1eb;
+}
+
+.due-card-details > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.due-card-details span {
+  flex: 0 0 auto;
+  color: #94a097;
+  font-size: 9px;
+}
+
+.due-card-details strong {
+  overflow: hidden;
+  color: #506456;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  text-overflow: ellipsis;
+}
+
+.dues-empty,
+.dues-loading {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px 20px;
+  text-align: center;
+}
+
+.dues-empty-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  color: #618368;
+  background: linear-gradient(145deg, #f3f8ef, #e5f0e1);
+  border: 1px solid #e1ecdd;
+  border-radius: 18px;
+  box-shadow: 0 8px 22px rgba(48, 85, 55, .09), inset 0 1px 0 #fff;
+}
+
+.dues-empty-icon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.dues-empty h2,
+.dues-loading strong {
+  margin: 17px 0 0;
+  color: #34483a;
+  font-family: "Manrope", sans-serif;
+  font-size: 17px;
+  letter-spacing: -.4px;
+}
+
+.dues-empty p,
+.dues-loading > span {
+  max-width: 370px;
+  margin: 8px 0 17px;
+  color: #869288;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.dues-empty .dues-add-button {
+  color: #fff;
+  background: #355e43;
+  border-color: #355e43;
+}
+
+.dues-loading-art {
+  width: 58px;
+  height: 58px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin-bottom: 5px;
+  border: 1px solid #dae8d6;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #f5faf2, #e8f2e4);
+  box-shadow: 0 10px 27px rgba(47, 85, 52, .09), inset 0 1px 0 #fff;
+}
+
+.dues-loading-art span {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border: 2px solid transparent;
+  border-top-color: #5d8764;
+  border-right-color: #acc89f;
+  border-radius: 50%;
+  animation: due-spin 1.25s linear infinite;
+}
+
+.dues-loading-art span:nth-child(2) {
+  width: 35px;
+  height: 35px;
+  border-top-color: #9bbd91;
+  border-left-color: #d0e1ca;
+  animation: due-spin 1.25s linear infinite reverse;
+}
+
+.dues-loading-art span:nth-child(3) {
+  width: 5px;
+  height: 5px;
+  background: #5d8764;
+  border: 0;
+  animation: none;
+}
+
+.dues-modal-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 18px;
+  background: rgba(16, 30, 21, .48);
+  backdrop-filter: blur(9px);
+  animation: due-fade .18s both;
+}
+
+.dues-modal {
+  width: min(570px, 100%);
+  max-height: min(90vh, 820px);
+  overflow-y: auto;
+  padding: clamp(20px, 4vw, 28px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(246, 250, 245, .97));
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(12, 30, 19, .25), inset 0 1px 0 #fff;
+  animation: due-modal-arrive .25s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.dues-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.dues-modal-kicker {
+  color: #859286;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.dues-modal-heading h2 {
+  margin: 5px 0 0;
+  color: #2b4233;
+  font-family: "Manrope", sans-serif;
+  font-size: 23px;
+  letter-spacing: -.8px;
+}
+
+.dues-modal-heading > button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: #78867c;
+  background: #f0f4ef;
+  border: 1px solid #e2e9e0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dues-modal-intro {
+  margin: 9px 0 20px;
+  color: #849086;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.dues-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dues-form > .dues-field {
+  grid-column: auto;
+}
+
+.dues-advanced-toggle {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  color: #56775b;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid #e9eee7;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.dues-advanced-toggle > span:last-child {
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  color: #587b5d;
+  background: #edf5e9;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.dues-advanced-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  animation: due-arrive .22s both;
+}
+
+.dues-field-hint {
+  color: #849186;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dues-field > span small {
+  margin-left: 3px;
+  color: #9aa49b;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.dues-amount-input,
+.dues-interval-input {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dues-amount-input > input {
+  min-width: 0;
+}
+
+.dues-interval-input > input {
+  width: 76px;
+  flex: 0 0 76px;
+}
+
+.dues-interval-input > span {
+  color: #89948b;
+  font-size: 10px;
+}
+
+.dues-reminder-options {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #e6ece3;
+  border-radius: 11px;
+}
+
+.dues-reminder-options legend {
+  padding: 0 5px;
+  color: #65756a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-reminder-options > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dues-reminder-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  color: #718075;
+  background: #f4f7f2;
+  border: 1px solid #e8eee5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.dues-reminder-options input,
+.dues-toggle-field > input {
+  accent-color: #4d7852;
+}
+
+.dues-toggle-field {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px;
+  background: #f5f8f3;
+  border: 1px solid #e7ede4;
+  border-radius: 10px;
+}
+
+.dues-toggle-field > input {
+  margin: 2px 0 0;
+}
+
+.dues-toggle-field > span {
+  display: grid;
+  gap: 3px;
+}
+
+.dues-toggle-field strong {
+  color: #647469;
+  font-size: 10px;
+}
+
+.dues-toggle-field small {
+  color: #909b92;
+  font-size: 9px;
+}
+
+.dues-field {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.dues-field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.dues-field > span,
+.dues-contact-search > span {
+  color: #65756a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-field i {
+  color: #ba6b59;
+  font-style: normal;
+}
+
+.dues-field input,
+.dues-field select,
+.dues-field textarea,
+.dues-contact-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 11px;
+  color: #2e4234;
+  background: rgba(255, 255, 255, .86);
+  border: 1px solid #e1e9df;
+  border-radius: 10px;
+  outline: 0;
+  font: inherit;
+  font-size: 11px;
+  transition: border-color .17s, box-shadow .17s;
+}
+
+.dues-field textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.dues-field input:focus,
+.dues-field select:focus,
+.dues-field textarea:focus,
+.dues-contact-search input:focus {
+  border-color: #9cba99;
+  box-shadow: 0 0 0 3px rgba(120, 162, 113, .13);
+}
+
+.dues-contact-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  background: linear-gradient(135deg, rgba(239, 247, 235, .9), rgba(255, 255, 255, .8));
+  border: 1px solid #e3eddf;
+  border-radius: 13px;
+}
+
+.dues-contact-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dues-contact-copy > svg {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  padding: 8px;
+  color: #55795b;
+  background: #e2efdc;
+  border-radius: 10px;
+}
+
+.dues-contact-copy > span {
+  display: grid;
+  gap: 3px;
+}
+
+.dues-contact-copy strong {
+  color: #46634b;
+  font-size: 10px;
+}
+
+.dues-contact-copy small {
+  color: #89968a;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dues-contact-enable {
+  min-height: 36px;
+  color: #426247;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid #dbe8d6;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-contact-enable:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.dues-contact-search {
+  display: grid;
+  gap: 6px;
+}
+
+.dues-contact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.dues-contact-list button {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  color: #506354;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid #e5ece2;
+  border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dues-contact-list button.is-selected {
+  background: #eaf4e6;
+  border-color: #b5d0ad;
+}
+
+.dues-contact-list button > span {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #55765a;
+  background: #eaf2e6;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-contact-list button > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dues-contact-list button small {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: #8a968c;
+  font-size: 8px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
+
+.dues-contact-panel > p,
+.dues-form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #a34f45;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.dues-form-error {
+  grid-column: 1 / -1;
+  padding: 10px 11px;
+  background: #fff3f0;
+  border: 1px solid #f1d8d1;
+  border-radius: 9px;
+}
+
+.dues-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.due-detail-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.due-detail-title-wrap h2 {
+  overflow-wrap: anywhere;
+}
+
+.due-detail-date {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 20px 0 12px;
+  padding: 12px;
+  color: #5d775f;
+  background: linear-gradient(135deg, #eff7eb, #f8faf6);
+  border: 1px solid #e4ede0;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.due-detail-date > svg {
+  width: 17px;
+  height: 17px;
+}
+
+.due-detail-date > strong {
+  margin-left: auto;
+  color: #8a968b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.due-detail-date.is-overdue {
+  color: #a9574d;
+  background: linear-gradient(135deg, #fff0ec, #fffaf8);
+  border-color: #f1ddd6;
+}
+
+.due-detail-date.is-today,
+.due-detail-date.is-soon {
+  color: #9b6b31;
+  background: linear-gradient(135deg, #fff6e3, #fffbf3);
+  border-color: #f0e5c8;
+}
+
+.due-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.due-detail-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid #eaf0e8;
+  border-radius: 10px;
+}
+
+.due-detail-grid > div.is-wide {
+  grid-column: 1 / -1;
+}
+
+.due-detail-grid span {
+  color: #89958b;
+  font-size: 9px;
+}
+
+.due-detail-grid strong {
+  overflow-wrap: anywhere;
+  color: #405748;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.dues-cancel-button {
+  min-height: 40px;
+  padding: 0 14px;
+  color: #718077;
+  background: #fff;
+  border: 1px solid #e4eae2;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.dues-delete-confirm {
+  min-height: 40px;
+  padding: 0 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #b64f48, #cf6257);
+  border: 1px solid #b64f48;
+  border-radius: 10px;
+  box-shadow: 0 5px 14px rgba(151, 54, 47, .16);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  transition: transform .18s, box-shadow .18s, opacity .18s;
+}
+
+.dues-delete-confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a6423b, #bd5148);
+  box-shadow: 0 8px 19px rgba(151, 54, 47, .24);
+  transform: translateY(-1px);
+}
+
+.dues-delete-confirm:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.dues-submit-button {
+  min-height: 40px;
+  color: #fff;
+  background: linear-gradient(135deg, #087e72, #139487);
+  border-color: #087e72;
+  box-shadow: 0 5px 14px rgba(8, 126, 114, .2), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+
+.dues-submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #066e64, #0d8378);
+  box-shadow: 0 8px 19px rgba(8, 126, 114, .28);
+}
+
+.dues-currency-label {
+  min-width: 52px;
+  min-height: 42px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  color: #28766a;
+  background: #e9f6f0;
+  border: 1px solid #d5e9df;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.dashboard-app[data-theme="dark"] .dues-currency-label {
+  color: #b1e3d1;
+  background: #243d34;
+  border-color: #3b5b4d;
+}
+
+.dashboard-app[data-theme="dark"] .dues-submit-button {
+  color: #fff;
+  background: linear-gradient(135deg, #087e72, #139487);
+  border-color: #139487;
+}
+
+.dashboard-app[data-theme="dark"] .dues-cancel-button {
+  color: #d1ddd6;
+  background: #26332e;
+  border-color: #41534b;
+}
+
+.dashboard-app[data-theme="dark"] .dues-delete-confirm {
+  color: #fff;
+  background: linear-gradient(135deg, #a8443f, #c3544c);
+  border-color: #c3544c;
+}
+
+@keyframes due-arrive {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes due-modal-arrive {
+  from { opacity: 0; transform: translateY(9px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes due-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes due-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes due-shine {
+  0%, 20% { transform: translateX(0) rotate(24deg); opacity: 0; }
+  30% { opacity: 1; }
+  55%, 100% { transform: translateX(500%) rotate(24deg); opacity: 0; }
+}
+
+@keyframes due-card-shine {
+  to { transform: translateX(100%); }
+}
+
+.dashboard-app[data-theme="dark"] .dues-hero {
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(156, 194, 149, .18), transparent 38%),
+    linear-gradient(125deg, #17291f 0%, #233a2a 56%, #304934 100%);
+}
+
+.dashboard-app[data-theme="dark"] .dues-categories button,
+.dashboard-app[data-theme="dark"] .due-card,
+.dashboard-app[data-theme="dark"] .due-card-actions button,
+.dashboard-app[data-theme="dark"] .dues-modal,
+.dashboard-app[data-theme="dark"] .dues-field input,
+.dashboard-app[data-theme="dark"] .dues-field select,
+.dashboard-app[data-theme="dark"] .dues-field textarea,
+.dashboard-app[data-theme="dark"] .dues-contact-search input,
+.dashboard-app[data-theme="dark"] .dues-contact-list button {
+  color: #dce8de;
+  background: linear-gradient(145deg, #202c23, #1d2821);
+  border-color: #35443a;
+}
+
+.dashboard-app[data-theme="dark"] .dues-categories button.is-active {
+  color: #eff8ec;
+  background: #34533b;
+  border-color: #45664a;
+}
+
+.dashboard-app[data-theme="dark"] .dues-categories button span,
+.dashboard-app[data-theme="dark"] .due-category-chip,
+.dashboard-app[data-theme="dark"] .dues-contact-copy > svg {
+  color: #c2d8c0;
+  background: #2e4032;
+  border-color: #3a5140;
+}
+
+.dashboard-app[data-theme="dark"] .due-card h2,
+.dashboard-app[data-theme="dark"] .dues-empty h2,
+.dashboard-app[data-theme="dark"] .dues-loading strong,
+.dashboard-app[data-theme="dark"] .dues-modal-heading h2,
+.dashboard-app[data-theme="dark"] .due-card-details strong {
+  color: #e2ede3;
+}
+
+.dashboard-app[data-theme="dark"] .due-date-line,
+.dashboard-app[data-theme="dark"] .dues-modal-intro,
+.dashboard-app[data-theme="dark"] .dues-empty p,
+.dashboard-app[data-theme="dark"] .dues-loading > span,
+.dashboard-app[data-theme="dark"] .dues-modal-kicker,
+.dashboard-app[data-theme="dark"] .dues-field > span,
+.dashboard-app[data-theme="dark"] .dues-contact-copy small,
+.dashboard-app[data-theme="dark"] .due-card-details span {
+  color: #aab9ac;
+}
+
+.dashboard-app[data-theme="dark"] .due-card-details {
+  border-color: #354238;
+}
+
+.dashboard-app[data-theme="dark"] .dues-contact-panel {
+  background: linear-gradient(135deg, #243427, #202d23);
+  border-color: #394a3c;
+}
+
+.dashboard-app[data-theme="dark"] .dues-contact-copy strong,
+.dashboard-app[data-theme="dark"] .dues-contact-enable {
+  color: #ccdfcb;
+}
+
+.dashboard-app[data-theme="dark"] .dues-contact-enable,
+.dashboard-app[data-theme="dark"] .dues-contact-list button.is-selected {
+  background: #304332;
+  border-color: #46634a;
+}
+
+.dashboard-app[data-theme="dark"] .dues-list-heading h2,
+.dashboard-app[data-theme="dark"] .due-card-title-row > strong,
+.dashboard-app[data-theme="dark"] .due-detail-grid strong {
+  color: #e2ede3;
+}
+
+.dashboard-app[data-theme="dark"] .dues-list-heading > span,
+.dashboard-app[data-theme="dark"] .dues-list-eyebrow,
+.dashboard-app[data-theme="dark"] .due-card-summary,
+.dashboard-app[data-theme="dark"] .due-card-description,
+.dashboard-app[data-theme="dark"] .dues-field-hint,
+.dashboard-app[data-theme="dark"] .dues-interval-input > span {
+  color: #aab9ac;
+}
+
+.dashboard-app[data-theme="dark"] .due-card::after {
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, .1) 47%, transparent 70%);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-summary > strong,
+.dashboard-app[data-theme="dark"] .due-card-more,
+.dashboard-app[data-theme="dark"] .dues-advanced-toggle {
+  color: #b5d5b5;
+}
+
+.dashboard-app[data-theme="dark"] .dues-advanced-toggle {
+  border-color: #35443a;
+}
+
+.dashboard-app[data-theme="dark"] .dues-advanced-toggle > span:last-child,
+.dashboard-app[data-theme="dark"] .dues-reminder-options label,
+.dashboard-app[data-theme="dark"] .dues-toggle-field {
+  color: #c5d5c7;
+  background: #26352a;
+  border-color: #3a4b3d;
+}
+
+.dashboard-app[data-theme="dark"] .dues-toggle-field strong,
+.dashboard-app[data-theme="dark"] .dues-reminder-options legend,
+.dashboard-app[data-theme="dark"] .dues-field > span small,
+.dashboard-app[data-theme="dark"] .dues-detail-date > strong {
+  color: #afc0b1;
+}
+
+.dashboard-app[data-theme="dark"] .due-detail-date,
+.dashboard-app[data-theme="dark"] .due-detail-grid > div {
+  color: #cadcca;
+  background: linear-gradient(135deg, #243529, #202c23);
+  border-color: #3a4b3d;
+}
+
+.dashboard-app[data-theme="dark"] .due-detail-date.is-overdue {
+  color: #e4a79a;
+  background: #3a2926;
+  border-color: #5b3933;
+}
+
+.dashboard-app[data-theme="dark"] .due-detail-date.is-today,
+.dashboard-app[data-theme="dark"] .due-detail-date.is-soon {
+  color: #e3c17e;
+  background: #393324;
+  border-color: #594b31;
+}
+
+.dashboard-app[data-theme="dark"] .due-detail-grid span {
+  color: #aab9ac;
+}
+
+@media (max-width: 720px) {
+  .dues-page {
+    padding-top: 3px;
+  }
+
+  .dues-hero {
+    min-height: 225px;
+    margin-bottom: 21px;
+    border-radius: 21px;
+  }
+
+  .dues-hero h1 {
+    max-width: 420px;
+  }
+
+  .dues-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .due-card {
+    padding: 16px;
+  }
+
+  .dues-categories {
+    margin-right: -4px;
+    margin-left: -4px;
+  }
+
+  .dues-modal-backdrop {
+    align-items: end;
+    padding: 8px;
+  }
+
+  .dues-modal {
+    width: 100%;
+    max-height: calc(92dvh - env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 14px 14px;
+  }
+}
+
+@media (max-width: 440px) {
+  .dues-hero {
+    min-height: 242px;
+    padding: 21px 18px;
+  }
+
+  .dues-hero h1 {
+    font-size: 30px;
+    letter-spacing: -1.2px;
+  }
+
+  .dues-hero-copy > p:last-child {
+    margin: 10px 0 19px;
+    font-size: 11px;
+  }
+
+  .dues-add-button {
+    min-height: 39px;
+    padding: 0 11px;
+    font-size: 10px;
+  }
+
+  .dues-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dues-advanced-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .due-card-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dues-list-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .due-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dues-contact-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dues-page *,
+  .dues-page *::before,
+  .dues-modal-backdrop,
+  .dues-modal {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* The dues workspace keeps its most-used controls close, even on small screens. */
+.dues-page {
+  --due-ink: #172b28;
+  --due-muted: #71817c;
+  --due-accent: #087e72;
+  --due-surface: rgba(255, 255, 255, .76);
+  max-width: 1180px;
+  padding: 12px clamp(14px, 2vw, 28px) 40px;
+}
+
+.dues-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 0 20px;
+  padding: clamp(20px, 3vw, 32px);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 92% 5%, rgba(115, 221, 195, .28), transparent 31%),
+    linear-gradient(118deg, #102e31 0%, #155b57 55%, #18877a 100%);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(13, 82, 72, .16), inset 0 1px 0 rgba(255, 255, 255, .24);
+  animation: due-arrive .45s both;
+}
+
+.dues-heading > div:first-child {
+  min-width: 0;
+}
+
+.dues-heading .dues-eyebrow {
+  margin-bottom: 10px;
+  color: #a9e9d9;
+}
+
+.dues-heading h1 {
+  margin: 0;
+  color: #f4fffb;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(27px, 3.5vw, 40px);
+  font-weight: 650;
+  letter-spacing: -1.5px;
+  line-height: 1.12;
+}
+
+.dues-heading > div:first-child > p:last-child {
+  max-width: 490px;
+  margin: 9px 0 0;
+  color: #c7e4db;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dues-heading-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.dues-count-pill {
+  padding: 9px 12px;
+  color: #dcf8ef;
+  background: rgba(255, 255, 255, .11);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.dues-heading .dues-add-button {
+  min-height: 42px;
+  padding: 0 16px;
+  color: #154f49;
+  background: #e2fff4;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: 14px;
+  box-shadow: 0 7px 20px rgba(0, 22, 20, .14);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.dues-heading .dues-add-button:hover:not(:disabled) {
+  background: #fff;
+  transform: translateY(-2px);
+}
+
+.dues-filter-dock {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0 0 18px;
+  padding: 10px 12px 2px;
+  background: rgba(246, 250, 247, .84);
+  border: 1px solid rgba(218, 231, 224, .78);
+  border-radius: 17px;
+  box-shadow: 0 8px 22px rgba(30, 63, 52, .07);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+}
+
+.dues-filter-label {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 5px 6px 2px;
+}
+
+.dues-filter-label strong {
+  color: var(--due-ink);
+  font-size: 10px;
+  letter-spacing: .01em;
+}
+
+.dues-filter-label span {
+  color: var(--due-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.dues-filter-dock .dues-categories {
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 0;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.dues-filter-dock .dues-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.dues-filter-dock .dues-categories button {
+  min-height: 36px;
+  color: #50645e;
+  background: rgba(255, 255, 255, .82);
+  border-color: #dce9e2;
+  font-size: 10px;
+}
+
+.dues-filter-dock .dues-categories button.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, #087e72, #139487);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(8, 126, 114, .2);
+}
+
+.dues-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  gap: 14px;
+}
+
+.dues-list-heading {
+  max-width: none;
+  margin: 4px 0 16px;
+}
+
+.dues-list-heading h2 {
+  color: var(--due-ink);
+}
+
+.due-card {
+  min-height: 174px;
+  padding: 16px 17px 14px;
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(174, 237, 217, .36), transparent 44%),
+    linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(246, 251, 249, .78));
+  border-color: rgba(210, 229, 220, .9);
+  border-radius: 20px;
+  box-shadow: 0 10px 26px rgba(25, 62, 51, .065), inset 0 1px 0 #fff;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.due-card.is-next-up {
+  border-color: rgba(17, 148, 129, .32);
+  box-shadow: 0 12px 30px rgba(16, 111, 95, .12), inset 0 1px 0 #fff;
+}
+
+.due-card::after {
+  background: linear-gradient(110deg, transparent 17%, rgba(255, 255, 255, .74) 48%, transparent 73%);
+}
+
+.due-card-top {
+  gap: 8px;
+}
+
+.due-brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #087e72;
+  background: linear-gradient(145deg, #e0faf0, #c8eee1);
+  border: 1px solid rgba(255, 255, 255, .92);
+  border-radius: 14px;
+  box-shadow: 0 5px 14px rgba(22, 116, 95, .14), inset 0 1px 0 #fff;
+}
+
+.due-brand-mark svg {
+  width: 21px;
+  height: 21px;
+}
+
+.due-brand-mark.is-netflix {
+  color: #e50914;
+  background: linear-gradient(145deg, #ffedf0, #fbd9df);
+}
+
+.due-brand-mark.is-spotify {
+  color: #16864b;
+  background: linear-gradient(145deg, #e3f8e9, #c9efd5);
+}
+
+.due-brand-mark.is-youtube {
+  color: #d43b32;
+  background: linear-gradient(145deg, #fff0ec, #ffdbd4);
+}
+
+.due-brand-mark.is-people {
+  color: #bb4f75;
+  background: linear-gradient(145deg, #ffe9f0, #f8cfdd);
+}
+
+.due-brand-mark.is-home {
+  color: #b2762d;
+  background: linear-gradient(145deg, #fff1d7, #f8dfb1);
+}
+
+.due-brand-mark.is-loan {
+  color: #4772bb;
+  background: linear-gradient(145deg, #eaf0ff, #d3defb);
+}
+
+.due-brand-mark.is-growth {
+  color: #9362b5;
+  background: linear-gradient(145deg, #f5eaff, #e8d7f8);
+}
+
+.due-brand-mark.is-travel {
+  color: #357f9a;
+  background: linear-gradient(145deg, #e3f7fb, #c9eaf1);
+}
+
+.due-brand-mark.is-other {
+  color: #647787;
+  background: linear-gradient(145deg, #edf2f7, #dce5ee);
+}
+
+.due-card-tone-subscription {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(183, 139, 239, .42), transparent 45%),
+    linear-gradient(145deg, #fff, #eee3ff);
+  border-color: #d8c0f7;
+}
+
+.due-card-tone-people {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(244, 139, 174, .4), transparent 45%),
+    linear-gradient(145deg, #fff, #ffe1eb);
+  border-color: #f3bfd0;
+}
+
+.due-card-tone-home {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(239, 181, 78, .42), transparent 45%),
+    linear-gradient(145deg, #fff, #ffedc9);
+  border-color: #f0d49b;
+}
+
+.due-card-tone-loan {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(117, 155, 239, .4), transparent 45%),
+    linear-gradient(145deg, #fff, #dfe9ff);
+  border-color: #bdcdf4;
+}
+
+.due-card-tone-growth {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(177, 124, 221, .4), transparent 45%),
+    linear-gradient(145deg, #fff, #f0e0ff);
+  border-color: #dcc2f2;
+}
+
+.due-card-tone-travel {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(83, 190, 215, .4), transparent 45%),
+    linear-gradient(145deg, #fff, #d9f5fb);
+  border-color: #b5e2ec;
+}
+
+.due-card-tone-subscription .due-category-chip {
+  color: #6940a1;
+  background: #e8d8fb;
+  border-color: #d5bdf3;
+}
+
+.due-card-tone-people .due-category-chip {
+  color: #a43d63;
+  background: #ffd4e1;
+  border-color: #f2b5c9;
+}
+
+.due-card-tone-home .due-category-chip {
+  color: #8a5a13;
+  background: #ffe4ad;
+  border-color: #efcf8e;
+}
+
+.due-card-tone-loan .due-category-chip {
+  color: #36569b;
+  background: #d2dfff;
+  border-color: #b7c9f3;
+}
+
+.due-card-tone-growth .due-category-chip {
+  color: #783d9d;
+  background: #e8d2fb;
+  border-color: #d5b9ee;
+}
+
+.due-card-tone-travel .due-category-chip {
+  color: #216c82;
+  background: #c9eef6;
+  border-color: #a9dce8;
+}
+
+.due-category-chip {
+  max-width: min(48%, 210px);
+  color: #28766a;
+  background: rgba(224, 246, 237, .84);
+  border-color: #d2eade;
+  font-size: 9px;
+}
+
+.due-next-badge {
+  padding: 5px 7px;
+  color: #98621b;
+  background: #fff4d9;
+  border: 1px solid #f5e5bb;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.due-card-title-row > strong {
+  color: #1e3530;
+}
+
+.due-card-summary > strong,
+.due-card-more {
+  color: #087e72;
+}
+
+.due-date-line.is-today,
+.due-date-line.is-overdue {
+  font-weight: 750;
+}
+
+.dues-empty {
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(158, 226, 201, .18), transparent 55%),
+    rgba(255, 255, 255, .72);
+  border: 1px solid #e1ece5;
+  box-shadow: 0 12px 32px rgba(31, 74, 60, .05);
+}
+
+.dues-empty .dues-add-button {
+  color: #fff;
+  background: linear-gradient(135deg, #087e72, #139487);
+  border-color: #087e72;
+  box-shadow: 0 6px 16px rgba(8, 126, 114, .2);
+}
+
+.dues-empty .dues-add-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #066e64, #0d8378);
+  box-shadow: 0 9px 20px rgba(8, 126, 114, .27);
+  transform: translateY(-2px);
+}
+
+.dashboard-app[data-theme="dark"] .dues-empty .dues-add-button {
+  color: #fff;
+  background: linear-gradient(135deg, #087e72, #139487);
+  border-color: #139487;
+}
+
+.dues-modal {
+  border: 1px solid rgba(255, 255, 255, .86);
+  border-radius: 24px;
+  box-shadow: 0 30px 90px rgba(11, 35, 30, .24), inset 0 1px 0 #fff;
+}
+
+.dues-modal-heading h2,
+.due-detail-title-wrap h2 {
+  color: #1b332e;
+}
+
+.dues-modal .dues-field input:focus,
+.dues-modal .dues-field select:focus,
+.dues-modal .dues-field textarea:focus {
+  border-color: #57b6a2;
+  box-shadow: 0 0 0 3px rgba(25, 155, 131, .13);
+}
+
+.dues-field select {
+  color-scheme: light;
+}
+
+.dues-field select option {
+  color: #243b34;
+  background: #fff;
+}
+
+.dashboard-app[data-theme="dark"] .dues-field select {
+  color-scheme: dark;
+}
+
+.dashboard-app[data-theme="dark"] .dues-field select option {
+  color: #e5f0eb;
+  background: #202c28;
+}
+
+.dashboard-app[data-theme="dark"] .dues-filter-dock {
+  background: rgba(24, 34, 32, .86);
+  border-color: rgba(116, 148, 137, .25);
+}
+
+.dashboard-app[data-theme="dark"] .dues-filter-label strong,
+.dashboard-app[data-theme="dark"] .dues-list-heading h2 {
+  color: #e4f1eb;
+}
+
+.dashboard-app[data-theme="dark"] .dues-filter-label span {
+  color: #a8b8b0;
+}
+
+.dashboard-app[data-theme="dark"] .dues-filter-dock .dues-categories button {
+  color: #c6d4cc;
+  background: rgba(40, 53, 49, .9);
+  border-color: #40534b;
+}
+
+.dashboard-app[data-theme="dark"] .dues-filter-dock .dues-categories button.is-active {
+  color: #fff;
+  background: #087e72;
+}
+
+.dashboard-app[data-theme="dark"] .due-card {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgba(31, 111, 91, .2), transparent 44%),
+    linear-gradient(145deg, rgba(33, 45, 41, .97), rgba(27, 38, 35, .96));
+  border-color: rgba(94, 124, 109, .55);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-subscription {
+  background: radial-gradient(ellipse at 95% 0%, rgba(117, 77, 153, .24), transparent 45%), linear-gradient(145deg, #292437, #211f2c);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-people {
+  background: radial-gradient(ellipse at 95% 0%, rgba(161, 69, 100, .24), transparent 45%), linear-gradient(145deg, #32242b, #292127);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-home {
+  background: radial-gradient(ellipse at 95% 0%, rgba(162, 110, 41, .22), transparent 45%), linear-gradient(145deg, #302a20, #27231d);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-loan {
+  background: radial-gradient(ellipse at 95% 0%, rgba(67, 98, 169, .24), transparent 45%), linear-gradient(145deg, #232a39, #20242f);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-growth {
+  background: radial-gradient(ellipse at 95% 0%, rgba(127, 82, 160, .23), transparent 45%), linear-gradient(145deg, #2d2537, #25202e);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-tone-travel {
+  background: radial-gradient(ellipse at 95% 0%, rgba(52, 120, 145, .23), transparent 45%), linear-gradient(145deg, #202d34, #1e272c);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-people {
+  color: #f0a3be;
+  background: linear-gradient(145deg, #533140, #422936);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-home {
+  color: #f0c179;
+  background: linear-gradient(145deg, #51402c, #403323);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-loan {
+  color: #a9c0ff;
+  background: linear-gradient(145deg, #303c5b, #29334d);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-growth {
+  color: #d0a5f1;
+  background: linear-gradient(145deg, #463258, #382844);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-travel {
+  color: #96d8e9;
+  background: linear-gradient(145deg, #2d4b56, #263d46);
+}
+
+.dashboard-app[data-theme="dark"] .due-brand-mark.is-other {
+  color: #c2d0dc;
+  background: linear-gradient(145deg, #394652, #2d3944);
+}
+
+.dashboard-app[data-theme="dark"] .due-card-title-row > strong,
+.dashboard-app[data-theme="dark"] .dues-modal-heading h2,
+.dashboard-app[data-theme="dark"] .due-detail-title-wrap h2 {
+  color: #e6f2ec;
+}
+
+.dashboard-app[data-theme="dark"] .due-category-chip {
+  color: #b1e3d1;
+  background: rgba(31, 87, 71, .54);
+  border-color: rgba(99, 158, 131, .3);
+}
+
+.dashboard-app[data-theme="dark"] .dues-empty {
+  background: rgba(32, 44, 39, .88);
+  border-color: #3b5147;
+}
+
+@media (max-width: 720px) {
+  .dues-page {
+    padding: 6px 12px 32px;
+  }
+
+  .dues-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 17px;
+    margin-bottom: 14px;
+    padding: 21px 19px;
+    border-radius: 21px;
+  }
+
+  .dues-heading-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dues-filter-dock {
+    display: block;
+    margin: 0 0 15px;
+    padding: 9px 9px 0;
+    border-radius: 15px;
+  }
+
+  .dues-filter-label {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 3px 7px;
+  }
+
+  .dues-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px;
+  }
+}
+
+@media (max-width: 440px) {
+  .dues-heading h1 {
+    font-size: 30px;
+    letter-spacing: -1.2px;
+  }
+
+  .dues-heading > div:first-child > p:last-child {
+    font-size: 11px;
+  }
+
+  .dues-heading .dues-add-button {
+    min-height: 39px;
+    padding: 0 12px;
+    font-size: 10px;
+  }
+
+  .due-card-top {
+    flex-wrap: wrap;
+  }
+
+  .due-next-badge {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .dues-modal-backdrop {
+    align-items: end;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .dues-modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: 0 auto;
+    overflow-x: hidden;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 16px 16px;
+  }
+
+  .dues-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  .dues-heading-actions {
+    gap: 8px;
+  }
+
+  .dues-count-pill {
+    max-width: 48%;
+    overflow: hidden;
+    padding: 8px 9px;
+    font-size: 10px;
+    text-overflow: ellipsis;
+  }
+
+  .dues-filter-dock {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .dues-filter-dock .dues-categories {
+    gap: 6px;
+  }
+
+  .dues-filter-dock .dues-categories button {
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+
+  .due-card {
+    padding: 14px 13px 12px;
+  }
+
+  .due-card-top {
+    align-items: center;
+    gap: 7px;
+  }
+
+  .due-category-chip {
+    max-width: calc(100% - 104px);
+  }
+
+  .due-card-actions button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .dues-modal-heading {
+    gap: 10px;
+  }
+
+  .dues-modal-heading h2,
+  .due-detail-title-wrap h2 {
+    font-size: 20px;
+  }
+
+  .dues-form,
+  .dues-advanced-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dues-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dues-form-actions {
+    position: sticky;
+    bottom: calc(-20px - env(safe-area-inset-bottom));
+    z-index: 1;
+    margin: 5px -18px calc(-20px - env(safe-area-inset-bottom));
+    padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(250, 252, 249, .96);
+    border-top: 1px solid #e7eee9;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dues-form-actions > button {
+    min-height: 42px;
+    flex: 1 1 0;
+  }
+
+  .dashboard-app[data-theme="dark"] .dues-form-actions {
+    background: rgba(28, 39, 35, .96);
+    border-color: #3b5147;
+  }
+}

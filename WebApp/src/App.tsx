@@ -4,11 +4,14 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { API_BASE_URL } from "./api/apiBaseUrl";
+import CurrencySelect from "./formatting/CurrencySelect";
 import FinanceDashboard from "./FinanceDashboard";
+import PremiumLoader from "./PremiumLoader";
 import { useAutoHideScrollbars } from "./hooks/useAutoHideScrollbars";
+import { useMinimumLoading } from "./hooks/useMinimumLoading";
 
 let oauthRefreshRequest: Promise<unknown> | null = null;
-let mobileSessionRestoreRequest: Promise<string | null> | null = null;
+let sessionRestoreRequest: Promise<string | null> | null = null;
 const WELCOME_DURATION_MS = 6000;
 const WELCOME_DURATION_SECONDS = Math.ceil(WELCOME_DURATION_MS / 1000);
 const MOBILE_OAUTH_CALLBACK = "com.blackdotorigin.financeflow://auth/callback";
@@ -369,29 +372,29 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(!isOAuthCallback);
   const [welcomeSecondsRemaining, setWelcomeSecondsRemaining] = useState(WELCOME_DURATION_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(isOAuthCallback);
+  const showOAuthFinishing = useMinimumLoading(isOAuthCallback && isSubmitting);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [accessToken, setAccessToken] = useState("");
-  const [isRestoringSession, setIsRestoringSession] = useState(
-    Capacitor.isNativePlatform(),
-  );
+  const [isRestoringSession, setIsRestoringSession] = useState(!isOAuthCallback);
+  const showRestoringSession = useMinimumLoading(isRestoringSession);
   const mobileOAuthState = useRef("");
   const mobileOAuthVerifier = useRef("");
   const handledMobileOAuthUrls = useRef(new Set<string>());
   const clearSession = useCallback(() => setAccessToken(""), []);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (isOAuthCallback) return;
 
     let isCurrent = true;
     const restoreSession = async () => {
       try {
-        mobileSessionRestoreRequest ??= fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+        sessionRestoreRequest ??= fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
           method: "POST",
           credentials: "include",
         }).then(async (response) => {
           if (response.status === 401) return null;
-          if (!response.ok) throw new Error("Could not restore the mobile session.");
+          if (!response.ok) throw new Error("Could not restore the session.");
 
           const result: unknown = await response.json();
           if (
@@ -405,10 +408,10 @@ export default function App() {
           }
           return result.accessToken;
         }).finally(() => {
-          mobileSessionRestoreRequest = null;
+          sessionRestoreRequest = null;
         });
 
-        const restoredToken = await mobileSessionRestoreRequest;
+        const restoredToken = await sessionRestoreRequest;
         if (isCurrent && restoredToken) setAccessToken(restoredToken);
       } catch {
         if (isCurrent) {
@@ -423,7 +426,7 @@ export default function App() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [isOAuthCallback]);
 
   const handleMobileOAuthCallback = useCallback(async (callbackUrl: string) => {
     let url: URL;
@@ -739,16 +742,10 @@ export default function App() {
     }
   }
 
-  if (isRestoringSession) {
+  if (showRestoringSession) {
     return (
       <main className="page-shell">
-        <div className="success-card" role="status" aria-live="polite">
-          <BrandMark />
-          <span className="success-icon loading-icon" aria-hidden="true" />
-          <p className="eyebrow">Welcome back</p>
-          <h1>Restoring your session.</h1>
-          <p className="success-copy">We’re securely reconnecting your account.</p>
-        </div>
+        <PremiumLoader label="Restoring your session." variant="restore" />
       </main>
     );
   }
@@ -757,7 +754,7 @@ export default function App() {
     return <LuxuryWelcomeScreen secondsRemaining={welcomeSecondsRemaining} />;
   }
 
-  if (accessToken) {
+  if (accessToken && !showOAuthFinishing) {
     return (
       <FinanceDashboard
         accessToken={accessToken}
@@ -768,16 +765,10 @@ export default function App() {
     );
   }
 
-  if (isOAuthCallback && isSubmitting) {
+  if (showOAuthFinishing) {
     return (
       <main className="page-shell">
-        <div className="success-card" role="status" aria-live="polite">
-          <BrandMark />
-          <span className="success-icon loading-icon" aria-hidden="true" />
-          <p className="eyebrow">One moment</p>
-          <h1>Finishing sign-in.</h1>
-          <p className="success-copy">We’re securely connecting your account.</p>
-        </div>
+        <PremiumLoader label="Finishing sign-in…" />
       </main>
     );
   }
@@ -863,13 +854,11 @@ export default function App() {
                 <div className="field">
                   <label htmlFor="currency">Default currency</label>
                   <div className="input-wrap">
-                    <input
-                      autoComplete="off"
+                    <CurrencySelect
+                      aria-label="Default currency"
                       id="currency"
-                      maxLength={3}
                       name="currency"
-                      onChange={(event) => setDefaultCurrency(event.target.value.toUpperCase())}
-                      placeholder="USD"
+                      onChange={setDefaultCurrency}
                       required
                       value={defaultCurrency}
                     />

@@ -489,6 +489,7 @@
 }
 
 .admin-wizard-edit input,
+.admin-wizard-edit select,
 .admin-wizard-filters select,
 .admin-wizard-role select {
   width: 100%;
@@ -505,6 +506,7 @@
 }
 
 .admin-wizard-edit input:focus,
+.admin-wizard-edit select:focus,
 .admin-wizard-filters select:focus,
 .admin-wizard-role select:focus {
   border-color: #d4dbd5;
@@ -1258,6 +1260,7 @@
 
   .dashboard-app[data-theme="dark"] .admin-wizard-role select,
   .dashboard-app[data-theme="dark"] .admin-wizard-edit input,
+  .dashboard-app[data-theme="dark"] .admin-wizard-edit select,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters select {
     color-scheme: dark;
     color: #dce5dd;

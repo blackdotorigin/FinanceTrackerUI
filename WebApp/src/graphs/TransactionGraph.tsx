@@ -3,6 +3,8 @@ import type { PointerEvent } from "react";
 import { fetchTransactions } from "../api/transactions";
 import type { Transaction } from "../api/transactions";
 import { formatCurrency as formatMoney } from "../formatting/currency";
+import PremiumLoader from "../PremiumLoader";
+import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import "./transaction-graph.css";
 
 type GraphRange = "week" | "month" | "year";
@@ -19,6 +21,8 @@ type GraphPoint = {
 type Props = {
   currency: string;
   apiFetch: (path: string) => Promise<Response>;
+  onLoadingChange: (isLoading: boolean) => void;
+  showLoadingIndicator?: boolean;
 };
 
 const GRAPH = {
@@ -95,7 +99,12 @@ function makeCurve(points: { x: number; y: number }[]) {
   }, "");
 }
 
-export default function TransactionGraph({ currency, apiFetch }: Props) {
+export default function TransactionGraph({
+  currency,
+  apiFetch,
+  onLoadingChange,
+  showLoadingIndicator = true,
+}: Props) {
   const [range, setRange] = useState<GraphRange>("month");
   const [selectedDate, setSelectedDate] = useState(() => periodStart(today(), "month"));
   const [type, setType] = useState<GraphType>("EXPENSE");
@@ -118,9 +127,16 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
   const canViewNextPeriod = requestDate < currentPeriodStart;
   const currentError = error?.key === requestKey ? error.message : "";
   const isLoading = loading || (loadedData?.key !== requestKey && !currentError);
+  const showLoading = useMinimumLoading(isLoading);
   const graphRange = loadedData?.key !== requestKey && loadedData ? loadedData.range : range;
   const graphDate = loadedData?.key !== requestKey && loadedData ? loadedData.date : requestDate;
   const transactions = loadedData?.transactions ?? EMPTY_TRANSACTIONS;
+
+  useEffect(() => {
+    onLoadingChange(showLoading);
+  }, [onLoadingChange, showLoading]);
+
+  useEffect(() => () => onLoadingChange(false), [onLoadingChange]);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -397,10 +413,9 @@ export default function TransactionGraph({ currency, apiFetch }: Props) {
             </>
           )}
         </svg>
-        {isLoading && (
-          <div className="transaction-graph-loading" role="status">
-            <span className="transaction-graph-loading-indicator" aria-hidden="true" />
-            <span>Updating graph…</span>
+        {showLoading && showLoadingIndicator && (
+          <div className="transaction-graph-loading">
+            <PremiumLoader compact label="Updating graph…" />
           </div>
         )}
         {currentError && (

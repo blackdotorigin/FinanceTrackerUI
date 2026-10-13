@@ -5,8 +5,13 @@ import { API_BASE_URL } from "./api/apiBaseUrl";
 import { fetchTransactions } from "./api/transactions";
 import type { PaymentMode, Transaction, TransactionFilters, TransactionType } from "./api/transactions";
 import TransactionGraph from "./graphs/TransactionGraph";
+import CurrencySelect from "./formatting/CurrencySelect";
 import { formatCurrency as formatMoney } from "./formatting/currency";
+import PremiumLoader from "./PremiumLoader";
+import { useMinimumLoading } from "./hooks/useMinimumLoading";
+import DuesPage from "./dues/DuesPage";
 import AdvancedTransactions from "./transactions/AdvancedTransactions";
+import AmountCalculator from "./transactions/AmountCalculator";
 import TransactionDetails from "./transactions/TransactionDetails";
 
 let dashboardRefreshRequest: Promise<string> | null = null;
@@ -58,6 +63,7 @@ type TransactionForm = {
 };
 
 type Theme = "light" | "dark";
+type DashboardSection = "overview" | "transactions" | "reports" | "dues" | "profile" | "admin";
 
 function getErrorMessage(status: number, action: string) {
   if (status === 401) return "Your session has expired. Please sign in again.";
@@ -270,7 +276,7 @@ function formatDate(date: string) {
   }).format(parsed);
 }
 
-type ReportTab = "monthly" | "budgets" | "trends";
+type ReportTab = "monthly" | "budgets" | "trends" | "graphs";
 
 const REPORT_COLORS = ["#5b8966", "#e4b866", "#84a9a0", "#cf8068", "#8c82aa", "#78a3c2", "#b7a17e"];
 
@@ -347,7 +353,7 @@ function Brand() {
   );
 }
 
-function Icon({ name }: { name: "plus" | "arrow" | "close" | "logout" | "wallet" | "income" | "expense" | "overview" | "transactions" | "reports" | "graph" | "profile" | "admin" | "search" | "products" }) {
+function Icon({ name }: { name: "plus" | "arrow" | "close" | "logout" | "wallet" | "income" | "expense" | "overview" | "transactions" | "reports" | "graph" | "due" | "profile" | "admin" | "search" | "products" | "calculator" }) {
   const paths = {
     plus: <path d="M12 5v14M5 12h14" />,
     arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,
@@ -360,10 +366,12 @@ function Icon({ name }: { name: "plus" | "arrow" | "close" | "logout" | "wallet"
     transactions: <><path d="M7 4h10l3 3v13H4V4h3Z" /><path d="M8 10h8M8 14h8M8 18h5" /></>,
     reports: <><path d="M4 19.5h16M6.5 16V10m5.5 6V5m5.5 11v-4" /><path d="M5 7.5 11 4l5 3 3-2" /></>,
     graph: <><path d="M4 18.5h16M5.5 15l4-4 3 2.5 6-7" /><path d="M14.5 6.5h4v4" /></>,
+    due: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.5 2M8 2.8 6.5 4M16 2.8 17.5 4" /></>,
     profile: <><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.6-3.4 2.9-5.2 6.5-5.2s5.9 1.8 6.5 5.2" /></>,
     admin: <><path d="M12 3 20 6v5.2c0 4.6-3.1 7.8-8 9.8-4.9-2-8-5.2-8-9.8V6l8-3Z" /><path d="m9 12 2 2 4-4" /></>,
     search: <><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></>,
     products: <><rect x="3.5" y="4" width="7" height="7" rx="1.5" /><rect x="13.5" y="4" width="7" height="7" rx="1.5" /><rect x="3.5" y="14" width="7" height="6" rx="1.5" /><path d="M14 17h6m-3-3v6" /></>,
+    calculator: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 3h2m4 0h2" /></>,
   };
 
   return (
@@ -425,11 +433,18 @@ export default function FinanceDashboard({
   const [profileOpen, setProfileOpen] = useState(false);
   const [productsMenuOpen, setProductsMenuOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-  const [activeNav, setActiveNav] = useState<"overview" | "transactions" | "reports" | "graphs" | "profile" | "admin">("overview");
+  const [activeNav, setActiveNav] = useState<DashboardSection>("overview");
+  const [navigationTransition, setNavigationTransition] = useState<{
+    section: DashboardSection;
+    startedAt: number;
+  } | null>(null);
+  const [sectionContentLoading, setSectionContentLoading] = useState(false);
+  const [dueOverlayOpen, setDueOverlayOpen] = useState(false);
   const [form, setForm] = useState<TransactionForm>({
     amount: "",
     type: "EXPENSE",
@@ -464,6 +479,9 @@ export default function FinanceDashboard({
   const [pressedTransactionId, setPressedTransactionId] = useState<string | null>(null);
   const budgetDialogCloseRef = useRef<HTMLButtonElement>(null);
   const budgetRequestId = useRef(0);
+  const showDashboardLoading = useMinimumLoading(loading);
+  const showProfileLoading = useMinimumLoading(profileLoading);
+  const showActivityLoading = useMinimumLoading(activityLoading);
 
   useEffect(() => {
     tokenRef.current = accessToken;
@@ -474,6 +492,38 @@ export default function FinanceDashboard({
   }, [theme]);
 
   useScrollZoom(loading, activeNav);
+
+  useEffect(() => {
+    if (!navigationTransition || navigationTransition.section !== activeNav) return;
+
+    const sectionLoading =
+      (activeNav === "overview" && (loading || refreshingTransactions || activityLoading)) ||
+      (activeNav === "transactions" && (categoriesLoading || sectionContentLoading)) ||
+      (activeNav === "reports" && (
+        reportLoading ||
+        (reportTab === "budgets" && (budgetLoading || categoriesLoading)) ||
+        (reportTab === "graphs" && sectionContentLoading)
+      )) ||
+      (activeNav === "dues" && sectionContentLoading) ||
+      (activeNav === "profile" && profileLoading);
+    if (sectionLoading) return;
+
+    const remaining = Math.max(0, 750 - (performance.now() - navigationTransition.startedAt));
+    const timeout = window.setTimeout(() => setNavigationTransition(null), remaining);
+    return () => window.clearTimeout(timeout);
+  }, [
+    activeNav,
+    activityLoading,
+    budgetLoading,
+    categoriesLoading,
+    loading,
+    navigationTransition,
+    profileLoading,
+    refreshingTransactions,
+    reportLoading,
+    reportTab,
+    sectionContentLoading,
+  ]);
 
   useEffect(() => {
     if (!notice) return;
@@ -495,14 +545,18 @@ export default function FinanceDashboard({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submitting) closeTransactionForm();
+      if (event.key === "Escape" && calculatorOpen) {
+        setCalculatorOpen(false);
+      } else if (event.key === "Escape" && !submitting) {
+        closeTransactionForm();
+      }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [formOpen, submitting]);
+  }, [calculatorOpen, formOpen, submitting]);
 
   useEffect(() => {
     if (
@@ -619,7 +673,10 @@ export default function FinanceDashboard({
   }, [apiFetch]);
 
   useEffect(() => {
-    if (activeNav !== "reports") return;
+    if (activeNav !== "reports" || reportTab === "graphs") {
+      setReportLoading(false);
+      return;
+    }
     const currentRequest = ++reportRequestId.current;
     const from = `${getMonthOffset(reportMonth, -5)}-01`;
     const [year, month] = reportMonth.split("-").map(Number);
@@ -647,7 +704,7 @@ export default function FinanceDashboard({
     return () => {
       if (currentRequest === reportRequestId.current) reportRequestId.current += 1;
     };
-  }, [activeNav, apiFetch, reportMonth, reportReload]);
+  }, [activeNav, apiFetch, reportMonth, reportReload, reportTab]);
 
   const refreshTransactions = useCallback(async (blocking = false) => {
     const requestId = ++transactionsRequestId.current;
@@ -1111,7 +1168,11 @@ export default function FinanceDashboard({
     }));
   }
 
-  function navigateTo(section: typeof activeNav) {
+  function navigateTo(section: DashboardSection) {
+    if (dueOverlayOpen) return;
+    if (section !== activeNav) {
+      setNavigationTransition({ section, startedAt: performance.now() });
+    }
     setActiveNav(section);
     setProfileOpen(false);
     if (section === "profile") void loadProfile();
@@ -1130,7 +1191,20 @@ export default function FinanceDashboard({
     }
   }
 
+  function transitionReportTab(tab: ReportTab) {
+    if (tab === reportTab) return;
+    setNavigationTransition({ section: "reports", startedAt: performance.now() });
+    setReportTab(tab);
+    if (tab === "budgets") void loadCategories();
+  }
+
+  function transitionReportMonth(update: (month: string) => string) {
+    setNavigationTransition({ section: "reports", startedAt: performance.now() });
+    setReportMonth(update);
+  }
+
   function openTransactionForm() {
+    setCalculatorOpen(false);
     setEditingTransactionId(null);
     setSelectedTransaction(null);
     setForm({
@@ -1148,6 +1222,7 @@ export default function FinanceDashboard({
   }
 
   function editTransaction(transaction: Transaction) {
+    setCalculatorOpen(false);
     setForm({
       amount: String(transaction.amount),
       type: transaction.type,
@@ -1170,6 +1245,7 @@ export default function FinanceDashboard({
 
   function closeTransactionForm() {
     if (submitting) return;
+    setCalculatorOpen(false);
     setFormOpen(false);
     setEditingTransactionId(null);
     setFormError("");
@@ -1267,6 +1343,7 @@ export default function FinanceDashboard({
       setTransactionRevision((revision) => revision + 1);
       const wasEditing = Boolean(editingTransactionId);
       setEditingTransactionId(null);
+      setCalculatorOpen(false);
       setForm({
         amount: "",
         type: "EXPENSE",
@@ -1307,11 +1384,10 @@ export default function FinanceDashboard({
     }
   }
 
-  if (loading) {
+  if (showDashboardLoading) {
     return (
-      <main className="dashboard-loading" role="status" aria-live="polite">
-        <span className="loading-icon" />
-        <p>Bringing your finances into focus…</p>
+      <main className="dashboard-loading">
+        <PremiumLoader label="Bringing your finances into focus…" />
       </main>
     );
   }
@@ -1342,6 +1418,7 @@ export default function FinanceDashboard({
         <nav className="rail-nav" aria-label="Main navigation">
           <button
             aria-label="Overview"
+            disabled={dueOverlayOpen}
             aria-current={activeNav === "overview" ? "page" : undefined}
             className={`rail-nav-link ${activeNav === "overview" ? "is-active" : ""}`}
             onClick={() => navigateTo("overview")}
@@ -1351,6 +1428,7 @@ export default function FinanceDashboard({
           </button>
           <button
             aria-label="Transactions"
+            disabled={dueOverlayOpen}
             aria-current={activeNav === "transactions" ? "page" : undefined}
             className={`rail-nav-link ${activeNav === "transactions" ? "is-active" : ""}`}
             onClick={() => navigateTo("transactions")}
@@ -1360,6 +1438,7 @@ export default function FinanceDashboard({
           </button>
           <button
             aria-label="Reports"
+            disabled={dueOverlayOpen}
             aria-current={activeNav === "reports" ? "page" : undefined}
             className={`rail-nav-link ${activeNav === "reports" ? "is-active" : ""}`}
             onClick={() => navigateTo("reports")}
@@ -1368,26 +1447,19 @@ export default function FinanceDashboard({
             <Icon name="reports" /><span>Reports</span>
           </button>
           <button
-            aria-label="Graphs"
-            aria-current={activeNav === "graphs" ? "page" : undefined}
-            className={`rail-nav-link ${activeNav === "graphs" ? "is-active" : ""}`}
-            onClick={() => navigateTo("graphs")}
+            aria-label="Due reminders"
+            disabled={dueOverlayOpen}
+            aria-current={activeNav === "dues" ? "page" : undefined}
+            className={`rail-nav-link ${activeNav === "dues" ? "is-active" : ""}`}
+            onClick={() => navigateTo("dues")}
             type="button"
           >
-            <Icon name="graph" /><span>Graphs</span>
-          </button>
-          <button
-            aria-label="Profile"
-            aria-current={activeNav === "profile" ? "page" : undefined}
-            className={`rail-nav-link ${activeNav === "profile" ? "is-active" : ""}`}
-            onClick={() => navigateTo("profile")}
-            type="button"
-          >
-            <Icon name="profile" /><span>Profile</span>
+            <Icon name="due" /><span>Due</span>
           </button>
           {isAdmin && (
             <button
               aria-label="Admin panel"
+              disabled={dueOverlayOpen}
               aria-current={activeNav === "admin" ? "page" : undefined}
               className={`rail-nav-link ${activeNav === "admin" ? "is-active" : ""}`}
               onClick={() => navigateTo("admin")}
@@ -1502,10 +1574,9 @@ export default function FinanceDashboard({
                 <h1 id="profile-page-title">Profile & preferences</h1>
                 <p>Manage the personal details and currency used in your account.</p>
               </div>
-              {profileLoading ? (
-                <div className="profile-loading-card" role="status">
-                  <span className="loading-icon" />
-                  <span>Loading your profile…</span>
+              {showProfileLoading ? (
+                <div className="profile-loading-card">
+                  <PremiumLoader compact label="Loading your profile…" />
                 </div>
               ) : profileError ? (
                 <div className="profile-loading-card profile-error-card" role="alert">
@@ -1552,12 +1623,10 @@ export default function FinanceDashboard({
                       />
                     </label>
                     <label className="dashboard-field">
-                      <span>Default currency <small>3-letter code</small></span>
-                      <input
-                        autoCapitalize="characters"
-                        maxLength={3}
-                        onChange={(event) => setProfileCurrency(event.target.value.toUpperCase())}
-                        placeholder="INR"
+                      <span>Default currency</span>
+                      <CurrencySelect
+                        aria-label="Default currency"
+                        onChange={setProfileCurrency}
                         required
                         value={profileCurrency}
                       />
@@ -1606,6 +1675,7 @@ export default function FinanceDashboard({
               categoriesError={categoriesError}
               categoriesLoading={categoriesLoading}
               currency={currency}
+              onLoadingChange={setSectionContentLoading}
               onRetryCategories={() => void loadCategories()}
               onSelectTransaction={setSelectedTransaction}
               revision={transactionRevision}
@@ -1618,24 +1688,26 @@ export default function FinanceDashboard({
                   <h1 id="reports-page-title">Your money, in focus.</h1>
                   <p>See where it goes, what comes in, and how your habits change.</p>
                 </div>
-                <div className="report-month-picker" aria-label="Report month">
-                  <button
-                    aria-label="Previous month"
-                    onClick={() => setReportMonth((month) => getMonthOffset(month, -1))}
-                    type="button"
-                  >
-                    ‹
-                  </button>
-                  <span>{formatMonth(reportMonth)}</span>
-                  <button
-                    aria-label="Next month"
-                    disabled={reportMonth >= getMonthValue()}
-                    onClick={() => setReportMonth((month) => getMonthOffset(month, 1))}
-                    type="button"
-                  >
-                    ›
-                  </button>
-                </div>
+                {reportTab !== "graphs" && (
+                  <div className="report-month-picker" aria-label="Report month">
+                    <button
+                      aria-label="Previous month"
+                      onClick={() => transitionReportMonth((month) => getMonthOffset(month, -1))}
+                      type="button"
+                    >
+                      ‹
+                    </button>
+                    <span>{formatMonth(reportMonth)}</span>
+                    <button
+                      aria-label="Next month"
+                      disabled={reportMonth >= getMonthValue()}
+                      onClick={() => transitionReportMonth((month) => getMonthOffset(month, 1))}
+                      type="button"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="report-tabs" role="tablist" aria-label="Report sections">
@@ -1643,6 +1715,7 @@ export default function FinanceDashboard({
                   ["monthly", "Monthly"],
                   ["budgets", "Budgets"],
                   ["trends", "Trends"],
+                  ["graphs", "Graphs"],
                 ] as const).map(([tab, label]) => (
                   <button
                     aria-selected={reportTab === tab}
@@ -1650,8 +1723,7 @@ export default function FinanceDashboard({
                     id={`report-tab-${tab}`}
                     key={tab}
                     onClick={() => {
-                      setReportTab(tab);
-                      if (tab === "budgets") void loadCategories();
+                      transitionReportTab(tab);
                     }}
                     role="tab"
                     type="button"
@@ -1661,8 +1733,7 @@ export default function FinanceDashboard({
                 ))}
               </div>
 
-              {reportLoading && <p className="dashboard-inline-status" role="status">Loading transactions for this report range…</p>}
-              {reportError && (
+              {reportTab !== "graphs" && reportError && (
                 <p className="dashboard-inline-error" role="alert">
                   {reportError} <button onClick={() => setReportReload((value) => value + 1)} type="button">Retry</button>
                 </p>
@@ -1940,15 +2011,11 @@ export default function FinanceDashboard({
                       </button>
                     </div>
                   )}
-                  {reportLoading || budgetLoading || categoriesLoading ? (
-                    <div className="report-card report-empty-card budget-loading" role="status">
-                      <p>Loading budget data…</p>
-                    </div>
-                  ) : budgetError || categoriesError ? (
+                  {!reportLoading && !budgetLoading && !categoriesLoading && (budgetError || categoriesError) ? (
                     <div className="report-card report-empty-card budget-loading" role="status">
                       <p>Budget data is unavailable until it can be loaded.</p>
                     </div>
-                  ) : budgetCategories.length ? (
+                  ) : !reportLoading && !budgetLoading && !categoriesLoading && budgetCategories.length ? (
                     <div className="budget-list">
                       {budgetCategories.map((category, index) => {
                         const existingLimit = budgetLimits.find(
@@ -2015,13 +2082,13 @@ export default function FinanceDashboard({
                         );
                       })}
                     </div>
-                  ) : (
+                  ) : !reportLoading && !budgetLoading && !categoriesLoading ? (
                     <div className="report-card report-empty-card">
                       <span className="reports-illustration"><Icon name="reports" /></span>
                       <h3>No expense categories yet.</h3>
                       <p>Add an expense category to set a monthly budget limit.</p>
                     </div>
-                  )}
+                  ) : null}
                   <p className="report-footnote">Budget limits are securely synced to your account. Spending reflects transactions in {formatMonth(reportMonth)}.</p>
                   {selectedBudgetCategory && (
                     <div
@@ -2176,6 +2243,21 @@ export default function FinanceDashboard({
                     </div>
                   )}
                 </div>
+              ) : reportTab === "graphs" ? (
+                <div className="report-panel report-graph-panel" role="tabpanel" aria-labelledby="report-tab-graphs">
+                  <div className="report-card-heading">
+                    <div>
+                      <p className="eyebrow">Explore your patterns</p>
+                      <h2>Spending, in motion.</h2>
+                    </div>
+                  </div>
+                  <TransactionGraph
+                    apiFetch={apiFetch}
+                    currency={currency}
+                    onLoadingChange={setSectionContentLoading}
+                    showLoadingIndicator={!navigationTransition || navigationTransition.section !== "reports"}
+                  />
+                </div>
               ) : (
                 <div className="report-panel" role="tabpanel" aria-labelledby="report-tab-trends">
                   <div className="report-metrics report-trend-metrics">
@@ -2235,16 +2317,29 @@ export default function FinanceDashboard({
                 </div>
               )}
             </section>
-          ) : activeNav === "graphs" ? (
-            <section className="dashboard-subpage graphs-page" aria-labelledby="graphs-page-title">
-              <div className="subpage-heading graph-page-heading">
-                <h1 id="graphs-page-title">Spending, in motion.</h1>
-              </div>
-              <TransactionGraph
-                currency={currency}
+          ) : activeNav === "dues" ? (
+            user ? (
+              <DuesPage
                 apiFetch={apiFetch}
+                currency={currency}
+                onOverlayOpenChange={setDueOverlayOpen}
+                onLoadingChange={setSectionContentLoading}
+                userId={user.id}
               />
-            </section>
+            ) : (
+              <section className="dashboard-subpage dues-page" aria-labelledby="dues-account-loading">
+                <div className="dues-loading" role={profileError && !showProfileLoading ? "alert" : "status"} aria-live="polite">
+                  {showProfileLoading ? (
+                    <div className="dues-loading-art"><span /><span /><span /></div>
+                  ) : null}
+                  <strong id="dues-account-loading">{showProfileLoading ? "Getting your account ready" : "Your account couldn’t load"}</strong>
+                  <span>{profileError || "We’re preparing your due reminders."}</span>
+                  {!showProfileLoading && (
+                    <button className="dues-add-button" onClick={() => void loadProfile()} type="button">Try again</button>
+                  )}
+                </div>
+              </section>
+            )
           ) : (
           <>
           <section className="dashboard-welcome" data-scroll-zoom id="overview">
@@ -2437,8 +2532,8 @@ export default function FinanceDashboard({
                 )}
               </div>
             </div>
-            {activityLoading ? (
-              <div className="activity-status" role="status">Gathering your activity…</div>
+            {showActivityLoading ? (
+              <div className="activity-status"><PremiumLoader compact label="Gathering your activity…" /></div>
             ) : activityError ? (
               <div className="activity-status activity-error" role="alert">
                 <span>{activityError}</span>
@@ -2655,6 +2750,13 @@ export default function FinanceDashboard({
           </>
           )}
         </main>
+        {navigationTransition && (
+          <div className="dashboard-transition-scrim">
+            <PremiumLoader
+              label={`Preparing ${navigationTransition.section === "admin" ? "admin panel" : navigationTransition.section}…`}
+            />
+          </div>
+        )}
       </div>
 
       {formOpen && (
@@ -2714,15 +2816,25 @@ export default function FinanceDashboard({
               </div>
               <label className="dashboard-field">
                 <span>Amount <small>{currency}</small></span>
-                <input
-                  min="0.01"
-                  onChange={(event) => updateForm("amount", event.target.value)}
-                  placeholder="0.00"
-                  required
-                  step="0.01"
-                  type="number"
-                  value={form.amount}
-                />
+                <div className="amount-entry">
+                  <input
+                    min="0.01"
+                    onChange={(event) => updateForm("amount", event.target.value)}
+                    placeholder="0.00"
+                    required
+                    step="0.01"
+                    type="number"
+                    value={form.amount}
+                  />
+                  <button
+                    aria-label="Open calculator"
+                    className="amount-calculator-trigger"
+                    onClick={() => setCalculatorOpen(true)}
+                    type="button"
+                  >
+                    <Icon name="calculator" />
+                  </button>
+                </div>
               </label>
               <label className="dashboard-field">
                 <span>Payment method</span>
@@ -2808,6 +2920,17 @@ export default function FinanceDashboard({
             </form>
           </section>
         </div>
+      )}
+      {formOpen && calculatorOpen && (
+        <AmountCalculator
+          currency={currency}
+          initialValue={form.amount}
+          onApply={(amount) => {
+            updateForm("amount", amount);
+            setCalculatorOpen(false);
+          }}
+          onCancel={() => setCalculatorOpen(false)}
+        />
       )}
       {selectedTransaction && (
         <TransactionDetails

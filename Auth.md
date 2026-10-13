@@ -297,6 +297,11 @@ Password login:
   -> keep accessToken in app memory
   -> browser stores HttpOnly refresh_token cookie
 
+Application startup:
+  POST /api/v1/auth/refresh with credentials: "include"
+  -> replace accessToken with the token returned for a valid refresh cookie
+  -> show sign-in when the refresh cookie is missing or no longer valid
+
 Authenticated API call:
   Authorization: Bearer <accessToken>
 

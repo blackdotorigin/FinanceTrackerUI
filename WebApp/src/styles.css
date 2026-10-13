@@ -2130,7 +2130,8 @@ a:focus-visible {
   height: 100%;
 }
 
-.input-wrap input {
+.input-wrap input,
+.input-wrap select {
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -2139,6 +2140,20 @@ a:focus-visible {
   border: 0;
   outline: 0;
   font-size: 13px;
+}
+
+.input-wrap select {
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-wrap select option {
+  color: #26372e;
+  background: #fbfcfa;
 }
 
 .input-wrap input::placeholder {
@@ -4722,13 +4737,13 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   .rail-nav {
     width: 100%;
     display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px;
     margin: 0;
   }
 
   .dashboard-rail.has-admin-nav .rail-nav {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .rail-nav-link {
@@ -5245,6 +5260,7 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   .dashboard-app[data-theme="dark"] .dashboard-field input,
   .dashboard-app[data-theme="dark"] .dashboard-field select,
   .dashboard-app[data-theme="dark"] .admin-wizard-edit input,
+  .dashboard-app[data-theme="dark"] .admin-wizard-edit select,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters input,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters select,
   .dashboard-app[data-theme="dark"] .admin-wizard-role select {
@@ -5258,6 +5274,16 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
     border-color: #46534a;
     box-shadow: none;
     transform: none;
+  }
+
+  .dashboard-app[data-theme="dark"] .input-wrap select {
+    color: #dce5dd;
+    color-scheme: dark;
+  }
+
+  .dashboard-app[data-theme="dark"] .input-wrap select option {
+    color: #dce5dd;
+    background: #17201b;
   }
 
   .dashboard-app[data-theme="dark"] .dashboard-field > span,
@@ -5274,6 +5300,7 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
   .dashboard-app[data-theme="dark"] .dashboard-field input:focus,
   .dashboard-app[data-theme="dark"] .dashboard-field select:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-edit input:focus,
+  .dashboard-app[data-theme="dark"] .admin-wizard-edit select:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters input:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-filters select:focus,
   .dashboard-app[data-theme="dark"] .admin-wizard-role select:focus {
@@ -6117,6 +6144,464 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
 
 .transactions-table {
   table-layout: fixed;
+}
+
+.amount-entry {
+  position: relative;
+}
+
+.dashboard-field .amount-entry input {
+  padding-right: 52px;
+}
+
+.amount-calculator-trigger {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 36px;
+  height: 32px;
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  color: #46534a;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+
+.amount-calculator-trigger svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+}
+
+.amount-calculator-trigger:hover {
+  color: #26392c;
+  background: #f1f5ef;
+  border-color: #dce5da;
+}
+
+.amount-calculator-trigger:active {
+  background: #e9f0e7;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-trigger {
+  color: #d2dbd3;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-trigger:hover {
+  color: #e4ece5;
+  background: #2b382f;
+  border-color: #3c4a3f;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-trigger:active {
+  background: #344338;
+}
+
+.amount-calculator-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 16px)) 16px max(16px, env(safe-area-inset-bottom, 16px));
+  background: rgba(16, 30, 22, .58);
+  backdrop-filter: blur(8px);
+  animation: amount-calculator-fade .2s ease-out both;
+}
+
+.amount-calculator {
+  position: relative;
+  width: min(390px, 100%);
+  overflow: hidden;
+  padding: 23px;
+  color: #34483a;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(129, 164, 123, .12), transparent 38%),
+    linear-gradient(150deg, #fff, #f4f7f1 82%);
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 23px;
+  box-shadow: 0 28px 90px rgba(11, 25, 16, .36), 0 2px 0 rgba(255, 255, 255, .65) inset;
+  animation: amount-calculator-arrive .32s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.amount-calculator::before {
+  position: absolute;
+  top: -92px;
+  right: -55px;
+  width: 190px;
+  height: 190px;
+  content: "";
+  background: radial-gradient(circle, rgba(157, 184, 137, .18), transparent 68%);
+  pointer-events: none;
+}
+
+.amount-calculator-heading,
+.amount-calculator-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.amount-calculator-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  color: #7b8e78;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.25px;
+}
+
+.amount-calculator-kicker i {
+  width: 7px;
+  height: 7px;
+  background: #89a77d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(137, 167, 125, .14);
+  animation: calculator-pulse 1.8s ease-in-out infinite;
+}
+
+.amount-calculator-heading h2 {
+  margin: 0;
+  color: #304337;
+  font-family: "Manrope", sans-serif;
+  font-size: 18px;
+  letter-spacing: -.55px;
+}
+
+.amount-calculator-close {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #778679;
+  background: rgba(255, 255, 255, .75);
+  border: 1px solid #e6ebe2;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.amount-calculator-close:hover {
+  color: #365240;
+  background: #edf3e9;
+}
+
+.amount-calculator-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.amount-calculator-display {
+  position: relative;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  margin: 19px 0 14px;
+  padding: 14px 16px;
+  text-align: right;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(106, 143, 106, .08), transparent 53%),
+    #edf3eb;
+  border: 1px solid #e5eadf;
+  border-radius: 15px;
+  box-shadow: inset 0 2px 8px rgba(39, 61, 41, .04);
+}
+
+.amount-calculator-expression {
+  overflow: hidden;
+  color: #718174;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amount-calculator-display strong {
+  overflow: hidden;
+  color: #315c3d;
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: calculator-result-arrive .22s ease-out both;
+}
+
+.amount-calculator-hint {
+  color: #a0aa9e;
+  font-size: 10px;
+}
+
+.amount-calculator-error {
+  color: #a84e42;
+  font-size: 10px;
+}
+
+.amount-calculator-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.amount-calculator-keypad button {
+  min-width: 0;
+  height: 47px;
+  color: #45584a;
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid #e6ebe3;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(35, 54, 38, .04);
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 600;
+  transition: transform .15s ease, color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.amount-calculator-keypad button:hover {
+  color: #315c3d;
+  background: #f4f7ef;
+  box-shadow: 0 5px 12px rgba(35, 54, 38, .1);
+  transform: translateY(-1px);
+}
+
+.amount-calculator-keypad button:active {
+  transform: scale(.96);
+}
+
+.amount-calculator-keypad button.is-operator,
+.amount-calculator-keypad button.is-utility {
+  color: #687f69;
+  background: #edf2e9;
+  border-color: #e1e9dc;
+}
+
+.amount-calculator-keypad button.is-utility {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.amount-calculator-keypad button.is-equals {
+  color: #fff;
+  background: linear-gradient(145deg, #65866a, #46674d);
+  border-color: #557759;
+  box-shadow: 0 5px 12px rgba(62, 100, 69, .2);
+}
+
+.amount-calculator-keypad button.is-equals:hover {
+  color: #fff;
+  background: linear-gradient(145deg, #759675, #527457);
+}
+
+.amount-calculator-actions {
+  margin-top: 15px;
+}
+
+.amount-calculator-cancel,
+.amount-calculator-apply {
+  min-height: 42px;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  transition: transform .16s ease, background .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.amount-calculator-cancel {
+  padding: 0 14px;
+  color: #6f7d70;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.amount-calculator-cancel:hover {
+  color: #435c47;
+  background: #edf2e9;
+}
+
+.amount-calculator-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 15px;
+  color: #fff;
+  background: linear-gradient(120deg, #557a5a, #426549);
+  border: 1px solid #4e7353;
+  box-shadow: 0 5px 14px rgba(55, 94, 62, .2);
+}
+
+.amount-calculator-apply:hover:not(:disabled) {
+  background: linear-gradient(120deg, #638765, #4c7353);
+  box-shadow: 0 7px 17px rgba(55, 94, 62, .27);
+  transform: translateY(-1px);
+}
+
+.amount-calculator-apply:disabled {
+  color: #9da89e;
+  background: #e8ece5;
+  border-color: #e1e6de;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.amount-calculator-apply svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator {
+  color: #dce6dd;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(126, 161, 123, .12), transparent 38%),
+    linear-gradient(150deg, #26332a, #1d2921 82%);
+  border-color: #455449;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .48), 0 2px 0 rgba(255, 255, 255, .035) inset;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-heading h2 {
+  color: #e1e9e2;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-kicker {
+  color: #a7b9a9;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-close {
+  color: #b6c4b8;
+  background: #2b382f;
+  border-color: #405044;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-display {
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(106, 143, 106, .12), transparent 53%),
+    #202d24;
+  border-color: #39483d;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-expression {
+  color: #a7b5a9;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-display strong {
+  color: #c1d8bf;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-hint {
+  color: #829084;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-keypad button {
+  color: #d4dfd5;
+  background: #2a372e;
+  border-color: #3a493d;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .12);
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-keypad button:hover {
+  color: #e5eee5;
+  background: #344439;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-keypad button.is-operator,
+.dashboard-app[data-theme="dark"] .amount-calculator-keypad button.is-utility {
+  color: #bfd0bf;
+  background: #303f34;
+  border-color: #435347;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-keypad button.is-equals {
+  color: #f4f8f3;
+  background: linear-gradient(145deg, #63836a, #49684f);
+  border-color: #63816a;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-cancel {
+  color: #b1beb3;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-cancel:hover {
+  color: #d9e5d9;
+  background: #303e34;
+}
+
+.dashboard-app[data-theme="dark"] .amount-calculator-apply:disabled {
+  color: #829084;
+  background: #303a32;
+  border-color: #3c473e;
+}
+
+@keyframes amount-calculator-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes amount-calculator-arrive {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes calculator-result-arrive {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes calculator-pulse {
+  50% { box-shadow: 0 0 0 7px rgba(137, 167, 125, .05); }
+}
+
+@media (max-width: 420px) {
+  .amount-calculator {
+    padding: 19px;
+    border-radius: 20px;
+  }
+
+  .amount-calculator-keypad {
+    gap: 7px;
+  }
+
+  .amount-calculator-keypad button {
+    height: 44px;
+  }
+
+  .amount-calculator-apply {
+    padding: 0 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amount-calculator-backdrop,
+  .amount-calculator,
+  .amount-calculator-display strong,
+  .amount-calculator-kicker i {
+    animation-duration: .01ms !important;
+  }
+
+  .amount-calculator *,
+  .amount-calculator-trigger {
+    transition-duration: .01ms !important;
+  }
 }
 
 .transactions-table th:first-child,

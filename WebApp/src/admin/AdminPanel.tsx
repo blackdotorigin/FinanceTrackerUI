@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import CurrencySelect from "../formatting/CurrencySelect";
+import { formatCurrency as formatMoney } from "../formatting/currency";
+import PremiumLoader from "../PremiumLoader";
+import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import "./admin.css";
 
 type User = {
@@ -107,14 +111,6 @@ function today() {
 
 function monthStart() {
   return `${today().slice(0, 7)}-01`;
-}
-
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
 }
 
 function formatDate(value: string) {
@@ -306,6 +302,8 @@ export default function AdminPanel({
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(0);
   const [total, setTotal] = useState(0);
+  const showLookupLoading = useMinimumLoading(loading);
+  const showTransactionsLoading = useMinimumLoading(transactionsLoading);
 
   useEffect(() => {
     const dialog = deactivationDialogRef.current;
@@ -496,12 +494,13 @@ export default function AdminPanel({
             </button>
           )}
         </div>
-        {!user && (
+        {!user && (showLookupLoading ? (
+          <PremiumLoader compact label="Finding user…" />
+        ) : (
           <button className="admin-wizard-primary" disabled={loading} type="submit">
-            {loading ? "Finding user…" : "Continue"}
-            {!loading && <span aria-hidden="true">→</span>}
+            Continue <span aria-hidden="true">→</span>
           </button>
-        )}
+        ))}
       </form>
 
       {error && <p className="admin-wizard-message is-error" role="alert">{error}</p>}
@@ -542,7 +541,7 @@ export default function AdminPanel({
               <div className="admin-panel-heading"><span>01 / ACCOUNT</span><h3>Edit user details</h3><p>Manage account information and access controls.</p></div>
               <form className="admin-wizard-edit" onSubmit={saveUser}>
                 <label>Full name<input maxLength={150} onChange={(event) => setFullName(event.target.value)} required value={fullName} /></label>
-                <label>Default currency<input maxLength={3} onChange={(event) => setCurrency(event.target.value.toUpperCase())} required value={currency} /></label>
+                <label>Default currency<CurrencySelect aria-label="Default currency" onChange={setCurrency} required value={currency} /></label>
                 <div className="admin-wizard-edit-footer">
                   <p>Email and username can’t be changed.</p>
                   <button className="admin-wizard-primary" disabled={saving} type="submit">{saving ? "Saving…" : "Save details"}</button>
@@ -574,8 +573,8 @@ export default function AdminPanel({
                 <button className="admin-wizard-primary" disabled={transactionsLoading} type="submit">{transactionsLoading ? "Loading…" : "Update results"}</button>
               </form>
               {transactionsError && <p className="admin-wizard-message is-error" role="alert">{transactionsError}</p>}
-              {transactionsLoading ? (
-                <div className="admin-wizard-loading" role="status">Loading transactions…</div>
+              {showTransactionsLoading ? (
+                <div className="admin-wizard-loading"><PremiumLoader compact label="Loading transactions…" /></div>
               ) : transactionsLoaded && transactions.length > 0 ? (
                 <>
                   <div className="admin-wizard-table-wrap"><table className="admin-wizard-table">

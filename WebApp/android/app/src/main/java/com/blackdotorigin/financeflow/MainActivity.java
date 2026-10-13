@@ -7,10 +7,18 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(ContactsPlugin.class);
+        CookieManager.getInstance().setAcceptCookie(true);
         super.onCreate(savedInstanceState);
 
         if (getBridge() != null && getBridge().getWebView() != null) {
             CookieManager.getInstance().setAcceptThirdPartyCookies(getBridge().getWebView(), true);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        CookieManager.getInstance().flush();
     }
 }

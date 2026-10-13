@@ -34,6 +34,29 @@ authenticated `/api/v1/budget-limits` endpoints. Budget usage is calculated
 from the selected report month's transactions and visualized with green,
 yellow, orange, and red progress levels.
 
+Navigation and data-fetching screens use a shared animated loading transition
+to smooth page changes while their data is prepared. Loading indicators remain
+visible for at least 750 ms for a consistent transition, and session restoration
+uses its own 3D animation. Currency choices in signup, profile, and account administration cover the runtime's supported ISO 4217
+currencies; monetary amounts display the currency's localized symbol. Changing
+the account currency labels amounts but does not convert them.
+
+Reports also includes the transaction graphs. Due reminders are kept in their
+own feature module and use the authenticated
+`GET /api/v1/users/dues/template`,
+`GET|POST /api/v1/user/{useruuid}/dues`, and
+`PUT|DELETE /api/v1/user/{useruuid}/dues/{duesuuid}` endpoints. Due categories
+and subcategories (including their display names and IDs) are loaded from the
+server template; create and update requests send `categoryId` and optional
+`subCategoryId`. Due amounts use the account currency and the form does not
+allow changing it. The form keeps title,
+category, amount, and next due date up front; recurrence, reminder timing,
+autopay, and optional details are grouped under extra options. Reminders are
+shown in due-date order under a compact category filter as clickable
+glass-effect cards with a compact summary and detail view. In the Android app, users
+can optionally grant contact access from the due form; contacts are read
+on-device and only copied into a due when the user selects one.
+
 ## Deploy to Cloudflare Pages
 
 Connect the GitHub repository from **Cloudflare → Workers & Pages → Create
@@ -84,10 +107,15 @@ Docker image. Both the web build and APK use the Render backend by default.
   alone cannot return a usable session to the Capacitor WebView.
 - The access token stays in React memory only. It is not written to local
   storage, session storage, a cookie, or a URL.
-- On Android, the app restores its session from the API's persistent refresh
-  cookie on startup. The API must allow credentialed requests from the
-  Capacitor WebView origin and issue the cookie as `SameSite=None; Secure`;
-  the refresh-token lifetime is configured by the backend, not this frontend.
+- On startup, the app restores its session from the API's persistent refresh
+  cookie on both web and Android. The API must allow credentialed requests from
+  the frontend origin and issue the cookie as `SameSite=None; Secure` for
+  cross-site requests; the refresh-token lifetime is configured by the backend,
+  not this frontend. Android also requires the API to allow the Capacitor
+  WebView origin and the WebView to allow third-party cookies. The Android
+  host explicitly enables cookie acceptance and flushes the WebView cookie
+  store when the app is paused, so the refresh cookie is persisted across
+  process restarts.
 
 For OAuth and cross-origin password sign-in to work, the API must allow the
 frontend origin with credentials, and its refresh cookie/CORS settings must

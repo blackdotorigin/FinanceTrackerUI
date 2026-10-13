@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { fetchTransactions } from "../api/transactions";
 import type { PaymentMode, Transaction, TransactionFilters, TransactionType } from "../api/transactions";
 import { formatCurrency as formatMoney } from "../formatting/currency";
+import PremiumLoader from "../PremiumLoader";
+import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import "./advanced-transactions.css";
 
 type Category = {
@@ -21,6 +23,7 @@ type Props = {
   currency: string;
   onRetryCategories: () => void;
   onSelectTransaction: (transaction: Transaction) => void;
+  onLoadingChange: (isLoading: boolean) => void;
   revision: number;
 };
 
@@ -96,6 +99,7 @@ export default function AdvancedTransactions({
   currency,
   onRetryCategories,
   onSelectTransaction,
+  onLoadingChange,
   revision,
 }: Props) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -110,6 +114,15 @@ export default function AdvancedTransactions({
   const [transactionsError, setTransactionsError] = useState("");
   const [pressedTransactionId, setPressedTransactionId] = useState<string | null>(null);
   const requestId = useRef(0);
+  const showCategoriesLoading = useMinimumLoading(categoriesLoading);
+  const showTransactionsLoading = useMinimumLoading(transactionsLoading);
+  const showSectionLoading = useMinimumLoading(categoriesLoading || transactionsLoading);
+
+  useEffect(() => {
+    onLoadingChange(showSectionLoading);
+  }, [onLoadingChange, showSectionLoading]);
+
+  useEffect(() => () => onLoadingChange(false), [onLoadingChange]);
 
   useEffect(() => {
     if (!pressedTransactionId) return;
@@ -315,7 +328,7 @@ export default function AdvancedTransactions({
             </select>
           </label>
         </div>
-        {transactionsLoading && <p className="advanced-categories-status" role="status">Loading matching transactions…</p>}
+        {showTransactionsLoading && <PremiumLoader compact label="Loading matching transactions…" />}
         {transactionsError && <p className="advanced-categories-error" role="alert">{transactionsError}</p>}
         <div className="advanced-type-filters" role="group" aria-label="Transaction type">
           {(["ALL", "EXPENSE", "INCOME"] as const).map((option) => (
@@ -372,7 +385,7 @@ export default function AdvancedTransactions({
             <p className="advanced-no-used-categories">No used categories for this selection yet.</p>
           )}
         </div>
-        {categoriesLoading && <p className="advanced-categories-status" role="status">Loading categories…</p>}
+        {showCategoriesLoading && <PremiumLoader compact label="Loading categories…" />}
         {categoriesError && (
           <p className="advanced-categories-error" role="alert">
             {categoriesError} <button onClick={onRetryCategories} type="button">Retry</button>
@@ -388,8 +401,8 @@ export default function AdvancedTransactions({
           <h2>Transactions</h2>
           <span>{filteredTransactions.length} {filteredTransactions.length === 1 ? "entry" : "entries"}</span>
         </div>
-        {transactionsLoading ? (
-          <p className="advanced-categories-status" role="status">Searching transactions…</p>
+        {showTransactionsLoading ? (
+          <PremiumLoader compact label="Searching transactions…" />
         ) : transactionsError ? null : filteredTransactions.length ? (
           <div className="advanced-transaction-list">
             {filteredTransactions.map((transaction, index) => {
