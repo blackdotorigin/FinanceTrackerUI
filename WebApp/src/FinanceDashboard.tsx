@@ -13,6 +13,7 @@ import DuesPage from "./dues/DuesPage";
 import AdvancedTransactions from "./transactions/AdvancedTransactions";
 import AmountCalculator from "./transactions/AmountCalculator";
 import TransactionDetails from "./transactions/TransactionDetails";
+import TransactionImportDialog from "./transactions/TransactionImportDialog";
 
 let dashboardRefreshRequest: Promise<string> | null = null;
 
@@ -435,6 +436,7 @@ export default function FinanceDashboard({
   const [profileOpen, setProfileOpen] = useState(false);
   const [productsMenuOpen, setProductsMenuOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [editTransitionBounds, setEditTransitionBounds] = useState<DialogBounds | null>(null);
@@ -1276,6 +1278,10 @@ export default function FinanceDashboard({
     setSelectedTransaction(null);
   }, []);
 
+  const closeImportDialog = useCallback(() => {
+    setImportOpen(false);
+  }, []);
+
   function closeTransactionForm() {
     if (submitting) return;
     setCalculatorOpen(false);
@@ -1541,54 +1547,72 @@ export default function FinanceDashboard({
               )}
             </div>
           </div>
-          <div className="profile-wrap">
+          <div className="dashboard-profile-actions">
             <button
-              className="profile-button"
-              aria-expanded={profileOpen}
-              aria-haspopup="menu"
-              aria-label={`Account menu for ${user?.fullName || initialUsername || "your account"}`}
+              className="import-trigger"
+              aria-label="Import transactions"
               onClick={() => {
+                setProfileOpen(false);
                 setProductsMenuOpen(false);
-                setProfileOpen((open) => !open);
+                setImportOpen(true);
+                void loadCategories();
               }}
               type="button"
             >
-              <span className="profile-avatar">
-                {(user?.fullName || user?.username || initialUsername || "A").slice(0, 1).toUpperCase()}
-              </span>
-              <span className="profile-name">{user?.fullName || initialUsername || "My account"}</span>
-              <svg className="profile-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 11.5v4A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
+              <span>Import transactions</span>
             </button>
-            {profileOpen && (
-              <div className="profile-menu" role="menu">
-                <strong>{user?.fullName || initialUsername || "Your account"}</strong>
-                <span>{user?.email || (user?.username ? `@${user.username}` : "Profile details")}</span>
-                <button onClick={() => navigateTo("profile")} role="menuitem" type="button">
-                  <Icon name="profile" /> View profile
-                </button>
-                <button
-                  className="profile-theme-menu-item"
-                  aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                  onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
-                  role="menuitem"
-                  type="button"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    {theme === "dark" ? (
-                      <><circle cx="12" cy="12" r="3.7" /><path d="M12 2.5v2m0 15v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2.5 12h2m15 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>
-                    ) : (
-                      <path d="M20.5 15.1A8.5 8.5 0 0 1 8.9 3.5 8.6 8.6 0 1 0 20.5 15.1Z" />
-                    )}
-                  </svg>
-                  {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                </button>
-                <button onClick={() => void handleLogout()} role="menuitem" type="button">
-                  <Icon name="logout" /> Sign out
-                </button>
-              </div>
-            )}
+            <div className="profile-wrap">
+              <button
+                className="profile-button"
+                aria-expanded={profileOpen}
+                aria-haspopup="menu"
+                aria-label={`Account menu for ${user?.fullName || initialUsername || "your account"}`}
+                onClick={() => {
+                  setProductsMenuOpen(false);
+                  setProfileOpen((open) => !open);
+                }}
+                type="button"
+              >
+                <span className="profile-avatar">
+                  {(user?.fullName || user?.username || initialUsername || "A").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="profile-name">{user?.fullName || initialUsername || "My account"}</span>
+                <svg className="profile-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {profileOpen && (
+                <div className="profile-menu" role="menu">
+                  <strong>{user?.fullName || initialUsername || "Your account"}</strong>
+                  <span>{user?.email || (user?.username ? `@${user.username}` : "Profile details")}</span>
+                  <button onClick={() => navigateTo("profile")} role="menuitem" type="button">
+                    <Icon name="profile" /> View profile
+                  </button>
+                  <button
+                    className="profile-theme-menu-item"
+                    aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                    onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      {theme === "dark" ? (
+                        <><circle cx="12" cy="12" r="3.7" /><path d="M12 2.5v2m0 15v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2.5 12h2m15 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>
+                      ) : (
+                        <path d="M20.5 15.1A8.5 8.5 0 0 1 8.9 3.5 8.6 8.6 0 1 0 20.5 15.1Z" />
+                      )}
+                    </svg>
+                    {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                  </button>
+                  <button onClick={() => void handleLogout()} role="menuitem" type="button">
+                    <Icon name="logout" /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -2793,6 +2817,18 @@ export default function FinanceDashboard({
         )}
       </div>
 
+      {importOpen && (
+        <TransactionImportDialog
+          apiFetch={apiFetch}
+          categories={categories}
+          categoriesError={categoriesError}
+          categoriesLoading={categoriesLoading}
+          currency={user?.defaultCurrency || "INR"}
+          onCategoriesRetry={() => void loadCategories()}
+          onClose={closeImportDialog}
+          onImported={() => void refreshTransactions()}
+        />
+      )}
       {formOpen && (
         <div
           className="transaction-modal-backdrop"
