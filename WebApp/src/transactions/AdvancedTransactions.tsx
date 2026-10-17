@@ -226,6 +226,10 @@ export default function AdvancedTransactions({
   const incomeTotal = filteredTransactions
     .filter((transaction) => transaction.type === "INCOME")
     .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const activeAdditionalFilterCount =
+    Number(Boolean(fromDate || toDate))
+    + Number(Boolean(paymentMode))
+    + Number(subCategoryId !== "all");
   const categoryCounts = transactions.reduce<Record<string, number>>((counts, transaction) => {
     if ((type === "ALL" || transaction.type === type) && transaction.category?.id) {
       counts[transaction.category.id] = (counts[transaction.category.id] ?? 0) + 1;
@@ -291,44 +295,10 @@ export default function AdvancedTransactions({
               value={search}
             />
           </label>
-          <div className="advanced-date-fields">
-            <label>
-              <span>From</span>
-              <input aria-label="From date" onChange={(event) => setFromDate(event.target.value)} type="date" value={fromDate} />
-            </label>
-            <label>
-              <span>To</span>
-              <input aria-label="To date" onChange={(event) => setToDate(event.target.value)} type="date" value={toDate} />
-            </label>
-          </div>
         </div>
         <p className="advanced-search-help" id="advanced-search-help">
-          Text matches the transactions returned by the other filters. Set a date range to search older activity.
+          Search descriptions, merchants, and categories.
         </p>
-        <div className="advanced-extra-filters">
-          <label>
-            <span>Payment method</span>
-            <select aria-label="Payment method" onChange={(event) => setPaymentMode(event.target.value as PaymentMode | "")} value={paymentMode}>
-              <option value="">All payment methods</option>
-              <option value="CASH">Cash</option>
-              <option value="CREDIT">Credit</option>
-              <option value="BANK_ACCOUNT">Bank account</option>
-            </select>
-          </label>
-          <label>
-            <span>Subcategory</span>
-            <select aria-label="Subcategory" onChange={(event) => setSubCategoryId(event.target.value)} value={subCategoryId}>
-              <option value="all">All subcategories</option>
-              {categories
-                .filter((category) => categoryId === "all" || category.id === categoryId)
-                .flatMap((category) => (category.subCategories ?? []).map((subCategory) => (
-                  <option key={subCategory.id} value={subCategory.id}>{subCategory.name}</option>
-                )))}
-            </select>
-          </label>
-        </div>
-        {showTransactionsLoading && <PremiumLoader compact label="Loading matching transactions…" />}
-        {transactionsError && <p className="advanced-categories-error" role="alert">{transactionsError}</p>}
         <div className="advanced-type-filters" role="group" aria-label="Transaction type">
           {(["ALL", "EXPENSE", "INCOME"] as const).map((option) => (
             <button
@@ -348,6 +318,56 @@ export default function AdvancedTransactions({
             </button>
           ))}
         </div>
+        <details className="advanced-filter-options">
+          <summary>
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+              <path d="M3 5h14M5.5 10h9M8 15h4" />
+              <circle cx="7" cy="5" r="1.5" />
+              <circle cx="12.5" cy="10" r="1.5" />
+              <circle cx="10" cy="15" r="1.5" />
+            </svg>
+            <span>More filters</span>
+            {activeAdditionalFilterCount > 0 && (
+              <small>{activeAdditionalFilterCount} active</small>
+            )}
+          </summary>
+          <div className="advanced-filter-options-fields">
+            <div className="advanced-date-fields">
+              <label>
+                <span>From</span>
+                <input aria-label="From date" onChange={(event) => setFromDate(event.target.value)} type="date" value={fromDate} />
+              </label>
+              <label>
+                <span>To</span>
+                <input aria-label="To date" onChange={(event) => setToDate(event.target.value)} type="date" value={toDate} />
+              </label>
+            </div>
+            <div className="advanced-extra-filters">
+              <label>
+                <span>Payment method</span>
+                <select aria-label="Payment method" onChange={(event) => setPaymentMode(event.target.value as PaymentMode | "")} value={paymentMode}>
+                  <option value="">All payment methods</option>
+                  <option value="CASH">Cash</option>
+                  <option value="CREDIT">Credit</option>
+                  <option value="BANK_ACCOUNT">Bank account</option>
+                </select>
+              </label>
+              <label>
+                <span>Subcategory</span>
+                <select aria-label="Subcategory" onChange={(event) => setSubCategoryId(event.target.value)} value={subCategoryId}>
+                  <option value="all">All subcategories</option>
+                  {categories
+                    .filter((category) => categoryId === "all" || category.id === categoryId)
+                    .flatMap((category) => (category.subCategories ?? []).map((subCategory) => (
+                      <option key={subCategory.id} value={subCategory.id}>{subCategory.name}</option>
+                    )))}
+                </select>
+              </label>
+            </div>
+          </div>
+        </details>
+        {showTransactionsLoading && <PremiumLoader compact label="Loading matching transactions…" />}
+        {transactionsError && <p className="advanced-categories-error" role="alert">{transactionsError}</p>}
         <div className="advanced-category-heading">
           <div>
             <span className="advanced-category-title">Categories</span>

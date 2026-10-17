@@ -7028,3 +7028,22 @@ html.scrollbars-visible *::-webkit-scrollbar-thumb {
     animation-duration: .01ms;
   }
 }
+
+#root select {
+  padding-right: 30px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%2375837a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-position: right 9px center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+}
+
+#root .activity-period-controls select {
+  padding-right: 20px;
+  background-position: right 4px center;
+  background-size: 12px 12px;
+}
+
+#root .dashboard-app[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23a9b6ac' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
