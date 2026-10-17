@@ -261,22 +261,21 @@ export default function AdvancedTransactions({
         <span className="advanced-results-count"><strong>{filteredTransactions.length}</strong> matching transactions</span>
       </header>
 
-      <div className="advanced-transaction-summary" aria-label="Filtered totals">
-        <div className="is-spent">
-          <span className="advanced-summary-icon" aria-hidden="true">↘</span>
-          <span>Spent</span><strong>{formatMoney(expenseTotal, currency)}</strong>
-        </div>
-        <div className="is-income">
-          <span className="advanced-summary-icon" aria-hidden="true">↗</span>
-          <span>Income</span><strong>{formatMoney(incomeTotal, currency)}</strong>
-        </div>
-        <div className="is-net">
-          <span className="advanced-summary-icon" aria-hidden="true">≈</span>
-          <span>Net balance</span><strong>{formatMoney(incomeTotal - expenseTotal, currency)}</strong>
-        </div>
-      </div>
-
       <div className="advanced-filter-card">
+        <div className="advanced-transaction-summary" aria-label="Filtered totals">
+          <div className="is-spent">
+            <span className="advanced-summary-icon" aria-hidden="true">↘</span>
+            <span>Spent</span><strong>{formatMoney(expenseTotal, currency)}</strong>
+          </div>
+          <div className="is-income">
+            <span className="advanced-summary-icon" aria-hidden="true">↗</span>
+            <span>Income</span><strong>{formatMoney(incomeTotal, currency)}</strong>
+          </div>
+          <div className="is-net">
+            <span className="advanced-summary-icon" aria-hidden="true">≈</span>
+            <span>Net balance</span><strong>{formatMoney(incomeTotal - expenseTotal, currency)}</strong>
+          </div>
+        </div>
         <div className="advanced-search-row">
           <label className="advanced-search-field">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">

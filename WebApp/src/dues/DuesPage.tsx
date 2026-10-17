@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Capacitor } from "@capacitor/core";
 import { formatCurrency } from "../formatting/currency";
@@ -14,6 +14,7 @@ import type { DueCategory, DueField, DueRecord, DueSubcategory, DueTemplate } fr
 import "./dues.css";
 
 type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>;
+type ModalBounds = Pick<DOMRect, "left" | "top" | "width" | "height">;
 type Props = {
   apiFetch: ApiFetch;
   userId: string;
@@ -243,6 +244,9 @@ export default function DuesPage({
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTransitionBounds, setEditTransitionBounds] = useState<ModalBounds | null>(null);
+  const dueFormModalRef = useRef<HTMLElement | null>(null);
+  const dueDetailsModalRef = useRef<HTMLElement | null>(null);
   const [values, setValues] = useState<DueForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -259,6 +263,29 @@ export default function DuesPage({
   const [deleteError, setDeleteError] = useState("");
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
   const showLoading = useMinimumLoading(loading);
+
+  useLayoutEffect(() => {
+    if (!formOpen || !editingId || !editTransitionBounds) return;
+    const modal = dueFormModalRef.current;
+    if (!modal || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const targetBounds = modal.getBoundingClientRect();
+    if (targetBounds.width === 0 || targetBounds.height === 0) return;
+    const translateX = editTransitionBounds.left + editTransitionBounds.width / 2
+      - targetBounds.left - targetBounds.width / 2;
+    const translateY = editTransitionBounds.top + editTransitionBounds.height / 2
+      - targetBounds.top - targetBounds.height / 2;
+    const animation = modal.animate(
+      [
+        {
+          transform: `translate(${translateX}px, ${translateY}px) scale(${editTransitionBounds.width / targetBounds.width}, ${editTransitionBounds.height / targetBounds.height})`,
+        },
+        { transform: "translate(0, 0) scale(1, 1)" },
+      ],
+      { duration: 280, easing: "cubic-bezier(.2, .75, .25, 1)" },
+    );
+    return () => animation.cancel();
+  }, [editTransitionBounds, editingId, formOpen]);
 
   const loadData = useCallback(async (showLoading = true) => {
     if (!userId) {
@@ -321,9 +348,15 @@ export default function DuesPage({
     ).slice(0, 12);
   }, [contactSearch, contacts]);
 
-  function openForm(due?: DueRecord) {
+  function openForm(due?: DueRecord, bounds: DOMRect | null = null) {
     if (!template) return;
     setEditingId(due?.id ?? null);
+    setEditTransitionBounds(bounds ? {
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    } : null);
     setValues(makeForm(template, currency, due));
     setAdvancedOptionsOpen(Boolean(due && (
       due.values.frequency !== "ONCE" ||
@@ -338,6 +371,12 @@ export default function DuesPage({
     setContactSearch("");
     setSelectedContactId("");
     setFormOpen(true);
+  }
+
+  function closeForm() {
+    if (saving) return;
+    setFormOpen(false);
+    setEditTransitionBounds(null);
   }
 
   function updateField<K extends keyof DueForm>(key: K, value: DueForm[K]) {
@@ -421,6 +460,7 @@ export default function DuesPage({
       }
       await loadData(false);
       setFormOpen(false);
+      setEditTransitionBounds(null);
       setSelectedDue(null);
     } catch (caught) {
       setFormError(parseError(caught, "We couldn’t save this due. Please try again."));
@@ -566,7 +606,14 @@ export default function DuesPage({
                       <span className="due-category-chip">{categoryLabel(category, subcategory)}</span>
                       {index === 0 && <span className="due-next-badge">NEXT UP</span>}
                       <div className="due-card-actions">
-                        <button aria-label={`Edit ${title}`} onClick={() => openForm(due)} type="button"><DetailIcon name="edit" /></button>
+                        <button
+                          aria-label={`Edit ${title}`}
+                          onClick={(event) => openForm(
+                            due,
+                            event.currentTarget.closest(".due-card")?.getBoundingClientRect() ?? null,
+                          )}
+                          type="button"
+                        ><DetailIcon name="edit" /></button>
                         <button aria-label={`Delete ${title}`} disabled={deletingId === due.id} onClick={() => requestDelete(due)} type="button"><DetailIcon name="trash" /></button>
                       </div>
                     </div>
@@ -612,7 +659,7 @@ export default function DuesPage({
         <div className="dues-modal-backdrop" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSelectedDue(null);
         }}>
-          <section className="dues-modal dues-detail-modal" aria-labelledby="due-detail-title" aria-modal="true" role="dialog">
+          <section className="dues-modal dues-detail-modal" aria-labelledby="due-detail-title" aria-modal="true" ref={dueDetailsModalRef} role="dialog">
             <div className="dues-modal-heading">
               <div className="due-detail-title-wrap">
                 <BrandMark
@@ -651,8 +698,9 @@ export default function DuesPage({
                 className="dues-submit-button"
                 onClick={() => {
                   const due = selectedDue;
+                  const bounds = dueDetailsModalRef.current?.getBoundingClientRect() ?? null;
                   setSelectedDue(null);
-                  openForm(due);
+                  openForm(due, bounds);
                 }}
                 type="button"
               ><DetailIcon name="edit" /> Edit reminder</button>
@@ -663,12 +711,18 @@ export default function DuesPage({
 
       {formOpen && template && values && (
         <div className="dues-modal-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !saving) setFormOpen(false);
+          if (event.target === event.currentTarget) closeForm();
         }}>
-          <section className="dues-modal" aria-labelledby="due-form-title" aria-modal="true" role="dialog">
+          <section
+            className={`dues-modal${editTransitionBounds ? " is-morphing" : ""}`}
+            aria-labelledby="due-form-title"
+            aria-modal="true"
+            ref={dueFormModalRef}
+            role="dialog"
+          >
             <div className="dues-modal-heading">
               <div><span className="dues-modal-kicker">A thoughtful reminder</span><h2 id="due-form-title">{editingId ? "Update a due" : "Add a due"}</h2></div>
-              <button aria-label="Close" disabled={saving} onClick={() => setFormOpen(false)} type="button">×</button>
+              <button aria-label="Close" disabled={saving} onClick={closeForm} type="button">×</button>
             </div>
             <p className="dues-modal-intro">A few details are all it takes. You can add more options when you need them.</p>
             <form className="dues-form" onSubmit={(event) => void saveDue(event)}>
@@ -876,7 +930,7 @@ export default function DuesPage({
               )}
               {formError && <p className="dues-form-error" role="alert">{formError}</p>}
               <div className="dues-form-actions">
-                <button className="dues-cancel-button" disabled={saving} onClick={() => setFormOpen(false)} type="button">Cancel</button>
+                <button className="dues-cancel-button" disabled={saving} onClick={closeForm} type="button">Cancel</button>
                 <button className="dues-submit-button" disabled={saving} type="submit">{saving ? "Saving…" : editingId ? "Save changes" : "Save reminder"}</button>
               </div>
             </form>

@@ -744,7 +744,7 @@ export default function App() {
 
   if (showRestoringSession) {
     return (
-      <main className="page-shell">
+      <main className="page-shell session-restore-shell">
         <PremiumLoader label="Restoring your session." variant="restore" />
       </main>
     );

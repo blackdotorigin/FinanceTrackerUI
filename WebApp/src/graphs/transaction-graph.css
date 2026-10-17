@@ -176,6 +176,7 @@
 }
 
 .transaction-graph-chart-wrap {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 202px;
@@ -229,9 +230,10 @@
 }
 
 .transaction-graph-loading {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  inset: 0 0 6%;
+  grid-area: 1 / 1;
+  align-self: stretch;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -242,6 +244,10 @@
   border-radius: 12px;
   font-size: 9px;
   pointer-events: none;
+}
+
+.transaction-graph-loading .premium-loader {
+  width: auto;
 }
 
 .transaction-graph-loading-indicator {

@@ -751,6 +751,10 @@
   animation: due-modal-arrive .25s cubic-bezier(.2, .7, .2, 1) both;
 }
 
+.dues-modal.is-morphing {
+  animation: none;
+}
+
 .dues-modal-heading {
   display: flex;
   align-items: flex-start;

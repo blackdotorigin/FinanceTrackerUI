@@ -1,8 +1,8 @@
 import { useState } from "react";
 import "./premium-loader.css";
 
-type LoaderStyle = "cube" | "gyro" | "coins";
-const LOADER_STYLES: LoaderStyle[] = ["cube", "gyro", "coins"];
+type LoaderStyle = "cube" | "gyro" | "coins" | "growth" | "pulse" | "spark" | "ledger" | "orbit";
+const LOADER_STYLES: LoaderStyle[] = ["cube", "gyro", "coins", "growth", "pulse", "spark", "ledger", "orbit"];
 
 type Props = {
   label: string;
@@ -56,11 +56,34 @@ export default function PremiumLoader({ label, compact = false, variant = "defau
               <div className="premium-loader-gyro-orbit is-secondary" />
             </>
           ) : (
+            loaderStyle === "coins" ? (
             <div className="premium-loader-coins">
               <div className="premium-loader-coin is-back"><span>$</span></div>
               <div className="premium-loader-coin is-middle"><span>$</span></div>
               <div className="premium-loader-coin is-front"><span>$</span></div>
             </div>
+            ) : loaderStyle === "growth" ? (
+              <div className="premium-loader-growth">
+                <span /><span /><span /><span />
+              </div>
+            ) : loaderStyle === "pulse" ? (
+              <div className="premium-loader-pulse">
+                <span /><span /><i />
+              </div>
+            ) : loaderStyle === "spark" ? (
+              <div className="premium-loader-spark">
+                <span /><span /><span /><i />
+              </div>
+            ) : loaderStyle === "ledger" ? (
+              <div className="premium-loader-ledger">
+                <span /><span /><span />
+              </div>
+            ) : (
+              <div className="premium-loader-orbit">
+                <span>$</span>
+                <i />
+              </div>
+            )
           )}
         </div>
       )}

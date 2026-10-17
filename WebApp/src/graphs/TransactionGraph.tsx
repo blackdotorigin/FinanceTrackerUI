@@ -413,7 +413,7 @@ export default function TransactionGraph({
             </>
           )}
         </svg>
-        {showLoading && showLoadingIndicator && (
+        {isLoading && showLoadingIndicator && (
           <div className="transaction-graph-loading">
             <PremiumLoader compact label="Updating graph…" />
           </div>

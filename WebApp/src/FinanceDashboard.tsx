@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AdminPanel from "./admin/AdminPanel";
 import { API_BASE_URL } from "./api/apiBaseUrl";
@@ -61,6 +61,8 @@ type TransactionForm = {
   subCategoryId: string;
   description: string;
 };
+
+type DialogBounds = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
 type Theme = "light" | "dark";
 type DashboardSection = "overview" | "transactions" | "reports" | "dues" | "profile" | "admin";
@@ -435,6 +437,8 @@ export default function FinanceDashboard({
   const [formOpen, setFormOpen] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [editTransitionBounds, setEditTransitionBounds] = useState<DialogBounds | null>(null);
+  const transactionModalRef = useRef<HTMLElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
@@ -454,6 +458,28 @@ export default function FinanceDashboard({
     subCategoryId: "",
     description: "",
   });
+
+  useLayoutEffect(() => {
+    if (!formOpen || !editingTransactionId || !editTransitionBounds) return;
+    const modal = transactionModalRef.current;
+    if (!modal || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const targetBounds = modal.getBoundingClientRect();
+    const translateX = editTransitionBounds.left + editTransitionBounds.width / 2
+      - targetBounds.left - targetBounds.width / 2;
+    const translateY = editTransitionBounds.top + editTransitionBounds.height / 2
+      - targetBounds.top - targetBounds.height / 2;
+    const scaleX = editTransitionBounds.width / targetBounds.width;
+    const scaleY = editTransitionBounds.height / targetBounds.height;
+    const animation = modal.animate(
+      [
+        { transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})` },
+        { transform: "translate(0, 0) scale(1, 1)" },
+      ],
+      { duration: 280, easing: "cubic-bezier(.2, .75, .25, 1)" },
+    );
+    return () => animation.cancel();
+  }, [editTransitionBounds, editingTransactionId, formOpen]);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [reportTab, setReportTab] = useState<ReportTab>("monthly");
@@ -1206,6 +1232,7 @@ export default function FinanceDashboard({
   function openTransactionForm() {
     setCalculatorOpen(false);
     setEditingTransactionId(null);
+    setEditTransitionBounds(null);
     setSelectedTransaction(null);
     setForm({
       amount: "",
@@ -1221,8 +1248,14 @@ export default function FinanceDashboard({
     void loadCategories();
   }
 
-  function editTransaction(transaction: Transaction) {
+  function editTransaction(transaction: Transaction, bounds: DOMRect | null) {
     setCalculatorOpen(false);
+    setEditTransitionBounds(bounds ? {
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    } : null);
     setForm({
       amount: String(transaction.amount),
       type: transaction.type,
@@ -1248,6 +1281,7 @@ export default function FinanceDashboard({
     setCalculatorOpen(false);
     setFormOpen(false);
     setEditingTransactionId(null);
+    setEditTransitionBounds(null);
     setFormError("");
   }
 
@@ -2769,7 +2803,8 @@ export default function FinanceDashboard({
           <section
             aria-labelledby="transaction-modal-title"
             aria-modal="true"
-            className="transaction-modal"
+            className={`transaction-modal${editTransitionBounds ? " is-morphing" : ""}`}
+            ref={transactionModalRef}
             role="dialog"
           >
             <div className="modal-heading">
@@ -2936,7 +2971,7 @@ export default function FinanceDashboard({
         <TransactionDetails
           currency={currency}
           onClose={closeTransactionDetails}
-          onEdit={() => editTransaction(selectedTransaction)}
+          onEdit={(bounds) => editTransaction(selectedTransaction, bounds)}
           transaction={selectedTransaction}
         />
       )}

@@ -35,9 +35,10 @@ export default function TransactionDetails({
   transaction: TransactionDetailsData;
   currency: string;
   onClose: () => void;
-  onEdit: () => void;
+  onEdit: (bounds: DOMRect | null) => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement
@@ -72,6 +73,7 @@ export default function TransactionDetails({
         aria-labelledby="transaction-details-title"
         aria-modal="true"
         className="transaction-details-dialog"
+        ref={dialogRef}
         role="dialog"
       >
         <div className="transaction-details-topline">
@@ -80,7 +82,11 @@ export default function TransactionDetails({
             {isIncome ? "Income" : "Expense"}
           </span>
           <div className="transaction-details-actions">
-            <button className="transaction-details-edit" onClick={onEdit} type="button">
+            <button
+              className="transaction-details-edit"
+              onClick={() => onEdit(dialogRef.current?.getBoundingClientRect() ?? null)}
+              type="button"
+            >
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="m14 5 5 5M4 20l4.2-.8L19 8.4a2.1 2.1 0 0 0-3-3L5.2 16.2 4 20Z" />
               </svg>

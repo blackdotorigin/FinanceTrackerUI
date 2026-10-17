@@ -197,6 +197,161 @@
   z-index: 1;
 }
 
+.premium-loader-growth {
+  width: 70px;
+  height: 62px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 8px 5px;
+  border-bottom: 2px solid rgba(77, 126, 85, .34);
+}
+
+.premium-loader-growth span {
+  width: 11px;
+  height: var(--bar-height);
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #b4d99b, #4c9166);
+  transform-origin: bottom;
+  animation: premium-growth-bar 1.2s ease-in-out infinite alternate;
+}
+
+.premium-loader-growth span:nth-child(1) { --bar-height: 25px; animation-delay: -.8s; }
+.premium-loader-growth span:nth-child(2) { --bar-height: 38px; animation-delay: -.55s; }
+.premium-loader-growth span:nth-child(3) { --bar-height: 31px; animation-delay: -.3s; }
+.premium-loader-growth span:nth-child(4) { --bar-height: 49px; animation-delay: -.05s; }
+
+.premium-loader-pulse {
+  width: 84px;
+  height: 84px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.premium-loader-pulse span {
+  position: absolute;
+  inset: 11px;
+  border: 1px solid rgba(86, 145, 96, .38);
+  border-radius: 50%;
+  animation: premium-pulse-ring 2s ease-out infinite;
+}
+
+.premium-loader-pulse span:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.premium-loader-pulse i {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #e8f3bd, #80b77d 62%, #4c8960);
+  box-shadow: 0 5px 13px rgba(48, 112, 67, .23);
+  animation: premium-pulse-core 1.6s ease-in-out infinite;
+}
+
+.premium-loader-spark {
+  width: 82px;
+  height: 82px;
+  position: relative;
+}
+
+.premium-loader-spark span {
+  width: 17px;
+  height: 17px;
+  position: absolute;
+  background: linear-gradient(145deg, #d8e9a9, #75aa72);
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  animation: premium-spark-twinkle 1.8s ease-in-out infinite;
+}
+
+.premium-loader-spark span:nth-child(1) { top: 12px; left: 32px; }
+.premium-loader-spark span:nth-child(2) { top: 38px; left: 12px; width: 12px; height: 12px; animation-delay: -.6s; }
+.premium-loader-spark span:nth-child(3) { top: 47px; right: 11px; width: 14px; height: 14px; animation-delay: -1.2s; }
+.premium-loader-spark i {
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(99, 147, 96, .3);
+  border-radius: 50%;
+  animation: premium-spark-orbit 5s linear infinite;
+}
+
+.premium-loader-ledger {
+  width: 49px;
+  height: 59px;
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 11px 8px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #dcebc8, #7db48a);
+  box-shadow: 0 7px 15px rgba(48, 112, 67, .18), inset 0 1px 0 rgba(255, 255, 255, .65);
+  animation: premium-ledger-lift 2.2s ease-in-out infinite;
+}
+
+.premium-loader-ledger span {
+  height: 3px;
+  border-radius: 4px;
+  background: rgba(47, 103, 66, .55);
+  transform-origin: left;
+  animation: premium-ledger-line 1.8s ease-in-out infinite;
+}
+
+.premium-loader-ledger span:nth-child(2) { width: 75%; animation-delay: -.25s; }
+.premium-loader-ledger span:nth-child(3) { width: 88%; animation-delay: -.5s; }
+
+.premium-loader-orbit {
+  width: 78px;
+  height: 78px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.premium-loader-orbit::before {
+  width: 61px;
+  height: 31px;
+  position: absolute;
+  content: "";
+  border: 1px solid rgba(82, 142, 94, .4);
+  border-radius: 50%;
+  transform: rotate(-28deg);
+}
+
+.premium-loader-orbit > span {
+  width: 29px;
+  height: 29px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: #39764e;
+  background: linear-gradient(145deg, #e1edb9, #8fbe7f);
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(48, 112, 67, .2);
+  font-family: "Manrope", sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  animation: premium-orbit-core 2.4s ease-in-out infinite;
+}
+
+.premium-loader-orbit > i {
+  width: 8px;
+  height: 8px;
+  position: absolute;
+  top: 18px;
+  left: 12px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #6da77a;
+  box-shadow: 0 0 9px rgba(88, 150, 96, .45);
+  transform-origin: 27px 21px;
+  animation: premium-orbit-dot 3.6s linear infinite;
+}
+
 .premium-restore-scene {
   width: 102px;
   height: 102px;
@@ -446,6 +601,49 @@
   50% { transform: translateY(-3px); }
 }
 
+@keyframes premium-growth-bar {
+  from { transform: scaleY(.72); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes premium-pulse-ring {
+  0% { opacity: .65; transform: scale(.45); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+@keyframes premium-pulse-core {
+  0%, 100% { transform: scale(.92); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes premium-spark-twinkle {
+  0%, 100% { opacity: .58; transform: scale(.72) rotate(0); }
+  50% { opacity: 1; transform: scale(1.08) rotate(35deg); }
+}
+
+@keyframes premium-spark-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes premium-ledger-lift {
+  0%, 100% { transform: translateY(2px) rotate(-2deg); }
+  50% { transform: translateY(-3px) rotate(2deg); }
+}
+
+@keyframes premium-ledger-line {
+  0%, 100% { opacity: .55; transform: scaleX(.72); }
+  50% { opacity: .95; transform: scaleX(1); }
+}
+
+@keyframes premium-orbit-core {
+  0%, 100% { transform: scale(.96); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes premium-orbit-dot {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes premium-restore-float {
   0%, 100% { transform: translateY(2px) rotateY(-12deg); }
   50% { transform: translateY(-3px) rotateY(12deg); }
@@ -492,6 +690,15 @@
   .premium-loader-gyro-orbit,
   .premium-loader-coins,
   .premium-loader-coin,
+  .premium-loader-growth span,
+  .premium-loader-pulse span,
+  .premium-loader-pulse i,
+  .premium-loader-spark span,
+  .premium-loader-spark i,
+  .premium-loader-ledger,
+  .premium-loader-ledger span,
+  .premium-loader-orbit > span,
+  .premium-loader-orbit > i,
   .premium-restore-globe,
   .premium-restore-globe > svg,
   .premium-restore-orbit-one,
