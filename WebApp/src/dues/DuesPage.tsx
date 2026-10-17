@@ -246,7 +246,6 @@ export default function DuesPage({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTransitionBounds, setEditTransitionBounds] = useState<ModalBounds | null>(null);
   const dueFormModalRef = useRef<HTMLElement | null>(null);
-  const dueDetailsModalRef = useRef<HTMLElement | null>(null);
   const [values, setValues] = useState<DueForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -655,11 +654,15 @@ export default function DuesPage({
         </>
       )}
 
-      {selectedDue && template && !formOpen && (
+      {((selectedDue && template && !formOpen) || (formOpen && template && values)) && (
         <div className="dues-modal-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setSelectedDue(null);
+          if (event.target === event.currentTarget) {
+            if (formOpen) closeForm();
+            else setSelectedDue(null);
+          }
         }}>
-          <section className="dues-modal dues-detail-modal" aria-labelledby="due-detail-title" aria-modal="true" ref={dueDetailsModalRef} role="dialog">
+        {selectedDue && template && !formOpen && (
+          <section className="dues-modal dues-detail-modal" aria-labelledby="due-detail-title" aria-modal="true" role="dialog">
             <div className="dues-modal-heading">
               <div className="due-detail-title-wrap">
                 <BrandMark
@@ -698,21 +701,16 @@ export default function DuesPage({
                 className="dues-submit-button"
                 onClick={() => {
                   const due = selectedDue;
-                  const bounds = dueDetailsModalRef.current?.getBoundingClientRect() ?? null;
                   setSelectedDue(null);
-                  openForm(due, bounds);
+                  openForm(due);
                 }}
                 type="button"
               ><DetailIcon name="edit" /> Edit reminder</button>
             </div>
           </section>
-        </div>
-      )}
+        )}
 
-      {formOpen && template && values && (
-        <div className="dues-modal-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) closeForm();
-        }}>
+        {formOpen && template && values && (
           <section
             className={`dues-modal${editTransitionBounds ? " is-morphing" : ""}`}
             aria-labelledby="due-form-title"
@@ -935,6 +933,7 @@ export default function DuesPage({
               </div>
             </form>
           </section>
+        )}
         </div>
       )}
 
