@@ -57,6 +57,19 @@ glass-effect cards with a compact summary and detail view. In the Android app, u
 can optionally grant contact access from the due form; contacts are read
 on-device and only copied into a due when the user selects one.
 
+Android due details also offer **Pay with UPI** when the reminder has an INR
+amount and a UPI ID. The Android system chooser opens a compatible installed
+payment app with the recipient, amount, and reminder title prefilled; the user
+must review and confirm the transfer in that app. On return, FinanceFlow may
+show a status reported by the payment app, but treats it as unverified and never
+automatically marks a due as paid. App responses can be missing or inconsistent;
+users should verify payment in their bank or payment app. FinanceFlow does not
+initiate, process, or verify payments. The dues API must accept, persist, and
+return the optional `payeeUpiId` property for it to remain available when a
+reminder is reloaded. This integration does not use a payment gateway;
+transaction limits or charges, if any, are determined by the payment app, bank,
+and applicable UPI rules.
+
 ## Deploy to Cloudflare Pages
 
 Connect the GitHub repository from **Cloudflare → Workers & Pages → Create

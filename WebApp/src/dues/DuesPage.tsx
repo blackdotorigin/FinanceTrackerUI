@@ -6,6 +6,8 @@ import PremiumLoader from "../PremiumLoader";
 import { readDeviceContacts } from "./contacts";
 import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import type { DeviceContact } from "./contacts";
+import { openUpiPayment } from "./upiPayments";
+import type { UpiPaymentStatus } from "./upiPayments";
 import {
   fetchDueTemplate,
   fetchDues,
@@ -169,6 +171,7 @@ type DueForm = {
   frequencyInterval: string;
   reminderDaysBefore: string[];
   payeeName: string;
+  payeeUpiId: string;
   reference: string;
   autoPay: boolean;
   status: string;
@@ -207,6 +210,7 @@ function makeForm(template: DueTemplate, currency: string, due?: DueRecord): Due
       ? reminders.map(String)
       : defaultReminders,
     payeeName: value("payeeName", ""),
+    payeeUpiId: value("payeeUpiId", ""),
     reference: value("reference", ""),
     autoPay: due ? due.values.autoPay === true : false,
     status: value("status", templateValue("status", template.statuses.includes("ACTIVE") ? "ACTIVE" : template.statuses[0] ?? "")),
@@ -215,6 +219,34 @@ function makeForm(template: DueTemplate, currency: string, due?: DueRecord): Due
 
 function parseError(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function upiPaymentUnavailableReason(due: DueRecord, currency: string) {
+  const payeeUpiId = getText(due.values.payeeUpiId).trim();
+  const amount = getText(due.values.amount).trim();
+  if (!/^[^@\s]+@[^@\s]+$/.test(payeeUpiId)) return "Add a valid UPI ID to this reminder before paying.";
+  if ((getText(due.values.currency) || currency).trim().toUpperCase() !== "INR") {
+    return "UPI payments are available only for reminders in INR.";
+  }
+  if (!/^\d+(?:\.\d{1,2})?$/.test(amount) || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    return "UPI requires a positive amount with no more than two decimal places.";
+  }
+  return "";
+}
+
+function upiPaymentStatusMessage(status: UpiPaymentStatus) {
+  switch (status) {
+    case "SUCCESS":
+      return "The payment app reported success. This is unverified; check your bank or payment app before treating the due as paid.";
+    case "FAILURE":
+      return "The payment app reported a failure. This is unverified; check your bank or payment app for the final result.";
+    case "PENDING":
+      return "The payment app reported that the payment is pending. This is unverified; check your bank or payment app for the final result.";
+    case "CANCELLED":
+      return "The payment app reported that the payment was cancelled. This is unverified; check your bank or payment app for the final result.";
+    case "UNKNOWN":
+      return "The payment app did not return a recognizable status. Check your bank or payment app before treating the due as paid.";
+  }
 }
 
 function DetailIcon({ name }: { name: "spark" | "plus" | "calendar" | "edit" | "trash" | "contact" | "clock" | "arrow" }) {
@@ -258,6 +290,9 @@ export default function DuesPage({
   const [contactSearch, setContactSearch] = useState("");
   const [selectedContactId, setSelectedContactId] = useState("");
   const [selectedDue, setSelectedDue] = useState<DueRecord | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<{ dueId: string; status: UpiPaymentStatus } | null>(null);
+  const [paymentLaunching, setPaymentLaunching] = useState(false);
   const [deleteConfirmDue, setDeleteConfirmDue] = useState<DueRecord | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
@@ -361,6 +396,7 @@ export default function DuesPage({
       due.values.frequency !== "ONCE" ||
       due.values.description ||
       due.values.payeeName ||
+      due.values.payeeUpiId ||
       due.values.reference ||
       due.values.autoPay ||
       due.values.status !== "ACTIVE"
@@ -430,6 +466,7 @@ export default function DuesPage({
       frequencyInterval,
       reminderDaysBefore: values.reminderDaysBefore.map(Number),
       payeeName: values.payeeName.trim() || null,
+      payeeUpiId: values.payeeUpiId.trim() || null,
       reference: values.reference.trim() || null,
       autoPay: values.autoPay,
       status: values.status,
@@ -512,6 +549,30 @@ export default function DuesPage({
     if (!template || !values) return;
     setSelectedContactId(contact.id);
     updateField("payeeName", contact.name);
+  }
+
+  async function payDue(due: DueRecord) {
+    setPaymentError("");
+    setPaymentStatus(null);
+    const unavailableReason = upiPaymentUnavailableReason(due, currency);
+    if (unavailableReason) {
+      setPaymentError(unavailableReason);
+      return;
+    }
+    setPaymentLaunching(true);
+    try {
+      const result = await openUpiPayment({
+        payeeUpiId: getText(due.values.payeeUpiId).trim(),
+        payeeName: getText(due.values.payeeName).trim(),
+        amount: Number(due.values.amount).toFixed(2),
+        note: getText(due.values.title).trim() || "FinanceFlow due",
+      });
+      setPaymentStatus({ dueId: due.id, status: result.status });
+    } catch (caught) {
+      setPaymentError(parseError(caught, "Couldn’t open a UPI payment app."));
+    } finally {
+      setPaymentLaunching(false);
+    }
   }
 
   const dueCountLabel = `${dues.length} ${dues.length === 1 ? "reminder" : "reminders"}`;
@@ -695,6 +756,26 @@ export default function DuesPage({
               <div><span>Payment</span><strong>{selectedDue.values.autoPay === true ? "Auto-pay" : "Manual"}</strong></div>
               <div><span>Status</span><strong>{getText(selectedDue.values.status) || "ACTIVE"}</strong></div>
             </div>
+            {Capacitor.getPlatform() === "android" && (
+              <div className="dues-payment-action">
+                <button
+                  className="dues-submit-button"
+                  disabled={paymentLaunching || Boolean(upiPaymentUnavailableReason(selectedDue, currency))}
+                  onClick={() => void payDue(selectedDue)}
+                  type="button"
+                >{paymentLaunching ? "Opening payment app…" : "Pay with UPI"}</button>
+                <span>Verify the recipient and review the amount before confirming in your chosen UPI app.</span>
+                {paymentError && <p className="dues-form-error" role="alert">{paymentError}</p>}
+                {paymentStatus?.dueId === selectedDue.id && (
+                  <p className="dues-payment-result" role="status">
+                    {upiPaymentStatusMessage(paymentStatus.status)}
+                  </p>
+                )}
+                {!paymentError && upiPaymentUnavailableReason(selectedDue, currency) && (
+                  <p className="dues-payment-hint">{upiPaymentUnavailableReason(selectedDue, currency)}</p>
+                )}
+              </div>
+            )}
             <div className="dues-form-actions">
               <button className="dues-cancel-button" onClick={() => requestDelete(selectedDue)} type="button">Delete</button>
               <button
@@ -816,6 +897,21 @@ export default function DuesPage({
                       value={values.payeeName}
                     />
                   </label>
+                  {Capacitor.getPlatform() === "android" && (
+                    <label className="dues-field">
+                      <span>UPI ID <small>optional</small></span>
+                      <input
+                        autoCapitalize="none"
+                        autoComplete="off"
+                        inputMode="email"
+                        maxLength={255}
+                        onChange={(event) => updateField("payeeUpiId", event.target.value)}
+                        placeholder="name@bank"
+                        value={values.payeeUpiId}
+                      />
+                      <small>Used to prefill payments in the Android UPI app chooser.</small>
+                    </label>
+                  )}
                   <label className="dues-field">
                     <span>Reference <small>optional</small></span>
                     <input

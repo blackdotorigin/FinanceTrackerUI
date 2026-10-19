@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(ContactsPlugin.class);
+        registerPlugin(UpiPaymentsPlugin.class);
         CookieManager.getInstance().setAcceptCookie(true);
         super.onCreate(savedInstanceState);
 

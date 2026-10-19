@@ -1234,6 +1234,37 @@
   line-height: 1.5;
 }
 
+.dues-payment-action {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.dues-payment-action > button {
+  width: 100%;
+}
+
+.dues-payment-action > span,
+.dues-payment-hint,
+.dues-payment-result {
+  margin: 0;
+  color: #71817c;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.dues-payment-hint,
+.dues-payment-result {
+  padding: 8px 10px;
+  background: rgba(229, 239, 232, .7);
+  border-radius: 9px;
+}
+
+.dues-payment-result {
+  color: #536b5b;
+  border: 1px solid rgba(123, 157, 131, .24);
+}
+
 .dues-cancel-button {
   min-height: 40px;
   padding: 0 14px;
@@ -1493,6 +1524,17 @@
 
 .dashboard-app[data-theme="dark"] .due-detail-grid span {
   color: #aab9ac;
+}
+
+.dashboard-app[data-theme="dark"] .dues-payment-hint {
+  color: #c2d1c8;
+  background: rgba(51, 69, 59, .78);
+}
+
+.dashboard-app[data-theme="dark"] .dues-payment-result {
+  color: #d0e1d6;
+  background: rgba(51, 69, 59, .78);
+  border-color: rgba(151, 184, 161, .24);
 }
 
 @media (max-width: 720px) {
