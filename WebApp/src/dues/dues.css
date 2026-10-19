@@ -265,6 +265,73 @@
   padding-bottom: 15px;
 }
 
+.dues-completed-section {
+  max-width: 790px;
+  margin-top: 24px;
+}
+
+.dues-completed-list {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 15px;
+}
+
+.dues-completed-item {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  color: #42584a;
+  background: rgba(249, 251, 248, .9);
+  border: 1px solid #e4ebe2;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .18s, transform .18s, box-shadow .18s;
+}
+
+.dues-completed-item:hover {
+  border-color: #bfd2be;
+  box-shadow: 0 6px 16px rgba(34, 53, 39, .07);
+  transform: translateY(-1px);
+}
+
+.dues-completed-item > span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dues-completed-item strong {
+  overflow: hidden;
+  color: #334a3a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dues-completed-item small {
+  color: #849187;
+  font-size: 9px;
+}
+
+.dues-completed-item .dues-completed-amount {
+  flex: 0 0 auto;
+  justify-items: end;
+  color: #56715d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dues-completed-amount small {
+  color: #77917b;
+  font-size: 8px;
+  letter-spacing: .06em;
+}
+
 .dues-list-heading {
   max-width: 790px;
   display: flex;
@@ -528,6 +595,29 @@
   color: #718076;
   font-size: 10px;
   font-weight: 600;
+}
+
+.due-deadline-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.due-deadline-dot.is-red {
+  background: #df514b;
+  box-shadow: 0 0 0 3px rgba(223, 81, 75, .13);
+}
+
+.due-deadline-dot.is-yellow {
+  background: #ddb33b;
+  box-shadow: 0 0 0 3px rgba(221, 179, 59, .14);
+}
+
+.due-deadline-dot.is-purple {
+  background: #9166c4;
+  box-shadow: 0 0 0 3px rgba(145, 102, 196, .13);
 }
 
 .due-date-line svg {
@@ -1244,6 +1334,101 @@
   width: 100%;
 }
 
+.dues-payment-qr {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e3ece2;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.dues-payment-qr > strong {
+  color: #3d5945;
+  font-size: 12px;
+}
+
+.dues-payment-qr img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  padding: 7px;
+  background: #fff;
+  border: 1px solid #eff2ee;
+  border-radius: 8px;
+}
+
+.dues-payment-qr > small,
+.dues-payment-proof > small {
+  color: #7b897e;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.dues-open-upi-link {
+  color: #416c4c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-payment-proof {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(244, 248, 242, .8);
+  border: 1px solid #e3ebe1;
+  border-radius: 12px;
+}
+
+.dues-payment-proof .dues-field input[type="file"] {
+  min-height: 0;
+  padding: 8px;
+  font-size: 10px;
+}
+
+.dues-payment-proof-preview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #e3ebe1;
+  border-radius: 9px;
+}
+
+.dues-proof-retry-later {
+  min-height: 34px;
+  color: #69786d;
+  background: transparent;
+  border: 1px solid #dfe7df;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.dues-mark-complete-button {
+  min-height: 38px;
+  color: #536b59;
+  background: rgba(255, 255, 255, .6);
+  border: 1px solid #dce8dc;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dues-mark-complete-button:hover:not(:disabled) {
+  color: #355b3b;
+  background: #f1f7ef;
+  border-color: #c7dcc5;
+}
+
+.dues-mark-complete-button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
 .dues-payment-action > span,
 .dues-payment-hint,
 .dues-payment-result {
@@ -1394,6 +1579,7 @@
 .dashboard-app[data-theme="dark"] .dues-categories button,
 .dashboard-app[data-theme="dark"] .due-card,
 .dashboard-app[data-theme="dark"] .due-card-actions button,
+.dashboard-app[data-theme="dark"] .dues-completed-item,
 .dashboard-app[data-theme="dark"] .dues-modal,
 .dashboard-app[data-theme="dark"] .dues-field input,
 .dashboard-app[data-theme="dark"] .dues-field select,
@@ -1460,8 +1646,41 @@
 
 .dashboard-app[data-theme="dark"] .dues-list-heading h2,
 .dashboard-app[data-theme="dark"] .due-card-title-row > strong,
+.dashboard-app[data-theme="dark"] .dues-completed-item strong,
 .dashboard-app[data-theme="dark"] .due-detail-grid strong {
   color: #e2ede3;
+}
+
+.dashboard-app[data-theme="dark"] .dues-completed-item small {
+  color: #aab9ac;
+}
+
+.dashboard-app[data-theme="dark"] .dues-mark-complete-button {
+  color: #c4d9c6;
+  background: #26352a;
+  border-color: #3d5140;
+}
+
+.dashboard-app[data-theme="dark"] .dues-mark-complete-button:hover:not(:disabled) {
+  background: #304332;
+}
+
+.dashboard-app[data-theme="dark"] .dues-payment-qr {
+  background: #f7faf7;
+}
+
+.dashboard-app[data-theme="dark"] .dues-payment-proof {
+  background: #222f27;
+  border-color: #3c4c40;
+}
+
+.dashboard-app[data-theme="dark"] .dues-payment-proof > small {
+  color: #aab9ac;
+}
+
+.dashboard-app[data-theme="dark"] .dues-proof-retry-later {
+  color: #c4d4c7;
+  border-color: #3d5140;
 }
 
 .dashboard-app[data-theme="dark"] .dues-list-heading > span,

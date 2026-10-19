@@ -23,14 +23,18 @@ public class UpiPaymentsPlugin extends Plugin {
     @PluginMethod
     public void openPayment(PluginCall call) {
         String payeeUpiId = call.getString("payeeUpiId", "").trim();
+        String payeePhoneNumber = call.getString("payeePhoneNumber", "").trim();
         String payeeName = call.getString("payeeName", "").trim();
         String amountValue = call.getString("amount", "").trim();
         String note = call.getString("note", "").trim();
 
-        if (!payeeUpiId.matches("[^@\\s]+@[^@\\s]+")) {
-            call.reject("Enter a valid UPI ID before starting a payment.");
+        boolean validUpiId = payeeUpiId.matches("[^@\\s]+@[^@\\s]+");
+        boolean validPhoneNumber = payeePhoneNumber.matches("\\+?[0-9]{8,15}");
+        if (!validUpiId && !validPhoneNumber) {
+            call.reject("Enter a valid UPI ID or mobile number before starting a payment.");
             return;
         }
+        String payeeAddress = validUpiId ? payeeUpiId : payeePhoneNumber;
 
         final BigDecimal amount;
         try {
@@ -47,8 +51,8 @@ public class UpiPaymentsPlugin extends Plugin {
         Uri paymentUri = new Uri.Builder()
             .scheme("upi")
             .authority("pay")
-            .appendQueryParameter("pa", payeeUpiId)
-            .appendQueryParameter("pn", payeeName.isEmpty() ? payeeUpiId : payeeName)
+            .appendQueryParameter("pa", payeeAddress)
+            .appendQueryParameter("pn", payeeName.isEmpty() ? payeeAddress : payeeName)
             .appendQueryParameter("am", amount.stripTrailingZeros().toPlainString())
             .appendQueryParameter("cu", "INR")
             .appendQueryParameter("tn", note.isEmpty() ? "FinanceFlow due" : note)
@@ -95,6 +99,13 @@ public class UpiPaymentsPlugin extends Plugin {
     private String parseReportedStatus(String response) {
         if (response == null || response.isEmpty()) return "UNKNOWN";
 
+        String normalizedResponse = response.toLowerCase(Locale.ROOT)
+            .replace('_', ' ')
+            .replace('-', ' ');
+        boolean recipientNotFound =
+            normalizedResponse.contains("user not found")
+                || normalizedResponse.contains("recipient not found")
+                || normalizedResponse.contains("beneficiary not found");
         Matcher matcher = STATUS_PATTERN.matcher(response);
         String status = matcher.find() ? matcher.group(1).trim().toUpperCase(Locale.ROOT) : "";
         switch (status) {
@@ -102,7 +113,7 @@ public class UpiPaymentsPlugin extends Plugin {
                 return "SUCCESS";
             case "FAILURE":
             case "FAILED":
-                return "FAILURE";
+                return recipientNotFound ? "RECIPIENT_NOT_FOUND" : "FAILURE";
             case "SUBMITTED":
             case "PENDING":
                 return "PENDING";
@@ -110,7 +121,7 @@ public class UpiPaymentsPlugin extends Plugin {
             case "CANCELED":
                 return "CANCELLED";
             default:
-                return "UNKNOWN";
+                return recipientNotFound ? "RECIPIENT_NOT_FOUND" : "UNKNOWN";
         }
     }
 }

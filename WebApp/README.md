@@ -53,22 +53,49 @@ allow changing it. The form keeps title,
 category, amount, and next due date up front; recurrence, reminder timing,
 autopay, and optional details are grouped under extra options. Reminders are
 shown in due-date order under a compact category filter as clickable
-glass-effect cards with a compact summary and detail view. In the Android app, users
-can optionally grant contact access from the due form; contacts are read
-on-device and only copied into a due when the user selects one.
+glass-effect cards with a compact summary and detail view. Completed reminders
+are separated into a cleared-dues section. Deadlines use red dots when overdue
+or within 7 days, yellow dots at 8–30 days, and purple dots beyond 30 days.
+In the Android app, users can optionally grant contact access from the due form;
+only a selected contact's name and number are saved to a reminder.
 
-Android due details also offer **Pay with UPI** when the reminder has an INR
-amount and a UPI ID. The Android system chooser opens a compatible installed
-payment app with the recipient, amount, and reminder title prefilled; the user
-must review and confirm the transfer in that app. On return, FinanceFlow may
-show a status reported by the payment app, but treats it as unverified and never
-automatically marks a due as paid. App responses can be missing or inconsistent;
-users should verify payment in their bank or payment app. FinanceFlow does not
-initiate, process, or verify payments. The dues API must accept, persist, and
-return the optional `payeeUpiId` property for it to remain available when a
-reminder is reloaded. This integration does not use a payment gateway;
-transaction limits or charges, if any, are determined by the payment app, bank,
-and applicable UPI rules.
+Android due details offer **Pay with UPI** for INR reminders with either a UPI
+ID or a phone number. The Android system chooser opens a compatible installed
+payment app with the recipient, amount, and reminder title prefilled. A phone
+number is passed as the UPI payment address when no UPI ID is available; number
+resolution depends on the selected UPI app and is best-effort. The app's
+`SUCCESS` response is not treated as proof of settlement. Users can submit a
+PNG, JPEG, or WebP payment screenshot (up to 10 MB) for review; a submitted
+screenshot does not clear the due. Users can mark a due cleared through the
+existing full `PUT /api/v1/user/{useruuid}/dues/{duesuuid}` endpoint only after
+the recipient confirms receipt. The existing template must expose `COMPLETED`
+in its status choices. Desktop and non-Android web views display a UPI QR
+payment intent; scanning and recipient resolution depend on the installed UPI
+app. A UPI ID is recommended for interoperable QR scanning.
+
+The dues API must accept, persist, and return the optional `payeePhoneNumber`
+property in addition to `payeeUpiId`. Add `payeePhoneNumber` to the due request
+schema/template and allow it in `POST` and full-replacement `PUT` payloads;
+without this backend schema support, contact phone numbers will not survive a
+reload.
+
+To persist screenshot proof, add this authenticated endpoint:
+
+```http
+POST /api/v1/user/{useruuid}/dues/{duesuuid}/payment-proof
+Content-Type: multipart/form-data
+```
+
+The multipart field is `file`. The server must verify due ownership, accept
+only PNG/JPEG/WebP image files up to 10 MB, store them privately, and return
+`201 Created` with `{"status":"PENDING_REVIEW","submittedAt":"<ISO-8601>"}`.
+The due-list response should include `paymentProofStatus` and
+`paymentProofSubmittedAt` so pending proof remains visible after refresh.
+Reject repeat submissions while a proof is pending, or define a replacement
+policy explicitly. A screenshot is unverified evidence; it must never cause
+the API to change the due status to `COMPLETED`. Payment transfers are
+recipient-to-recipient through the selected UPI app; this flow does not use
+Razorpay or PayU and does not incur a payment-gateway charge.
 
 ## Deploy to Cloudflare Pages
 

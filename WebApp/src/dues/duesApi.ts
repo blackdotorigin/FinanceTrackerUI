@@ -200,3 +200,26 @@ export async function fetchDues(apiFetch: ApiFetch, userId: string): Promise<Due
   } while (true);
   return dues;
 }
+
+export async function submitDuePaymentProof(
+  apiFetch: ApiFetch,
+  userId: string,
+  dueId: string,
+  file: File,
+): Promise<{ status: string; submittedAt: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiFetch(
+    `/api/v1/user/${encodeURIComponent(userId)}/dues/${encodeURIComponent(dueId)}/payment-proof`,
+    { method: "POST", body: formData },
+  );
+  if (!response.ok) {
+    throw new Error(`Couldn’t submit payment proof (server returned ${response.status}).`);
+  }
+  const body: unknown = await response.json();
+  const value = unwrap(body);
+  if (!isObject(value) || value.status !== "PENDING_REVIEW" || typeof value.submittedAt !== "string") {
+    throw new Error("The payment-proof response was not in the expected format.");
+  }
+  return { status: value.status, submittedAt: value.submittedAt };
+}

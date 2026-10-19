@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Capacitor } from "@capacitor/core";
+import QRCode from "qrcode";
 import { formatCurrency } from "../formatting/currency";
 import PremiumLoader from "../PremiumLoader";
 import { readDeviceContacts } from "./contacts";
@@ -11,6 +12,7 @@ import type { UpiPaymentStatus } from "./upiPayments";
 import {
   fetchDueTemplate,
   fetchDues,
+  submitDuePaymentProof,
 } from "./duesApi";
 import type { DueCategory, DueField, DueRecord, DueSubcategory, DueTemplate } from "./duesApi";
 import "./dues.css";
@@ -61,6 +63,14 @@ function daysFromToday(value: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((date.getTime() - today.getTime()) / 86400000);
+}
+
+function deadlineTone(value: string) {
+  const days = daysFromToday(value);
+  if (!Number.isFinite(days)) return "none";
+  if (days <= 7) return "red";
+  if (days <= 30) return "yellow";
+  return "purple";
 }
 
 function categoryFor(due: DueRecord, template: DueTemplate): DueCategory | undefined {
@@ -172,6 +182,7 @@ type DueForm = {
   reminderDaysBefore: string[];
   payeeName: string;
   payeeUpiId: string;
+  payeePhoneNumber: string;
   reference: string;
   autoPay: boolean;
   status: string;
@@ -211,6 +222,7 @@ function makeForm(template: DueTemplate, currency: string, due?: DueRecord): Due
       : defaultReminders,
     payeeName: value("payeeName", ""),
     payeeUpiId: value("payeeUpiId", ""),
+    payeePhoneNumber: value("payeePhoneNumber", ""),
     reference: value("reference", ""),
     autoPay: due ? due.values.autoPay === true : false,
     status: value("status", templateValue("status", template.statuses.includes("ACTIVE") ? "ACTIVE" : template.statuses[0] ?? "")),
@@ -223,8 +235,11 @@ function parseError(error: unknown, fallback: string) {
 
 function upiPaymentUnavailableReason(due: DueRecord, currency: string) {
   const payeeUpiId = getText(due.values.payeeUpiId).trim();
+  const payeePhoneNumber = normalizePhoneNumber(getText(due.values.payeePhoneNumber));
   const amount = getText(due.values.amount).trim();
-  if (!/^[^@\s]+@[^@\s]+$/.test(payeeUpiId)) return "Add a valid UPI ID to this reminder before paying.";
+  if (!/^[^@\s]+@[^@\s]+$/.test(payeeUpiId) && !isValidPhoneNumber(payeePhoneNumber)) {
+    return "Add a valid UPI ID or contact phone number to this reminder before paying.";
+  }
   if ((getText(due.values.currency) || currency).trim().toUpperCase() !== "INR") {
     return "UPI payments are available only for reminders in INR.";
   }
@@ -234,18 +249,80 @@ function upiPaymentUnavailableReason(due: DueRecord, currency: string) {
   return "";
 }
 
+function normalizePhoneNumber(value: string) {
+  const trimmed = value.trim();
+  const normalized = trimmed.replace(/[^\d+]/g, "");
+  return normalized.startsWith("+")
+    ? `+${normalized.slice(1).replace(/\+/g, "")}`
+    : normalized.replace(/\+/g, "");
+}
+
+function isValidPhoneNumber(value: string) {
+  return /^\+?\d{8,15}$/.test(value);
+}
+
+function upiPaymentUri(due: DueRecord, currency: string) {
+  const payeeUpiId = getText(due.values.payeeUpiId).trim();
+  const payeeAddress = /^[^@\s]+@[^@\s]+$/.test(payeeUpiId)
+    ? payeeUpiId
+    : normalizePhoneNumber(getText(due.values.payeePhoneNumber));
+  const amount = Number(due.values.amount);
+  const currencyCode = (getText(due.values.currency) || currency).trim().toUpperCase();
+  if (!payeeAddress || !Number.isFinite(amount) || amount <= 0 || currencyCode !== "INR") return "";
+  const params = new URLSearchParams({
+    pa: payeeAddress,
+    pn: getText(due.values.payeeName) || payeeAddress,
+    am: amount.toFixed(2),
+    cu: "INR",
+    tn: getText(due.values.title) || "FinanceFlow due",
+  });
+  return `upi://pay?${params.toString()}`;
+}
+
+function isCompletedDue(due: DueRecord) {
+  return getText(due.values.status).toUpperCase() === "COMPLETED";
+}
+
+function dueUpdatePayload(due: DueRecord, currency: string, status: string) {
+  const category = due.values.category;
+  const subcategory = due.values.subCategory;
+  const payeePhoneNumber = getText(due.values.payeePhoneNumber);
+  return {
+    title: getText(due.values.title),
+    description: getText(due.values.description) || null,
+    categoryId: getText(due.values.categoryId) || (isObject(category) ? getText(category.id) : ""),
+    subCategoryId: getText(due.values.subCategoryId) || (isObject(subcategory) ? getText(subcategory.id) : "") || null,
+    amount: Number(due.values.amount),
+    currency: (getText(due.values.currency) || currency).trim().toUpperCase(),
+    dueDate: getText(due.values.dueDate).slice(0, 10),
+    frequency: getText(due.values.frequency),
+    frequencyInterval: Number(due.values.frequencyInterval) || 1,
+    reminderDaysBefore: Array.isArray(due.values.reminderDaysBefore)
+      ? due.values.reminderDaysBefore.map(Number)
+      : [],
+    payeeName: getText(due.values.payeeName) || null,
+    payeeUpiId: getText(due.values.payeeUpiId) || null,
+    ...(payeePhoneNumber ? { payeePhoneNumber } : {}),
+    reference: getText(due.values.reference) || null,
+    autoPay: due.values.autoPay === true,
+    status,
+  };
+}
+
 function upiPaymentStatusMessage(status: UpiPaymentStatus) {
   switch (status) {
     case "SUCCESS":
-      return "The payment app reported success. This is unverified; check your bank or payment app before treating the due as paid.";
+      return "The payment app reported that the payment succeeded.";
     case "FAILURE":
-      return "The payment app reported a failure. This is unverified; check your bank or payment app for the final result.";
+      return "The payment app reported that the payment failed.";
+    case "RECIPIENT_NOT_FOUND":
+      return "The selected UPI app could not find this recipient.";
     case "PENDING":
-      return "The payment app reported that the payment is pending. This is unverified; check your bank or payment app for the final result.";
+      return "The payment app reported that the payment is still pending.";
     case "CANCELLED":
-      return "The payment app reported that the payment was cancelled. This is unverified; check your bank or payment app for the final result.";
+      return "The payment was cancelled.";
     case "UNKNOWN":
-      return "The payment app did not return a recognizable status. Check your bank or payment app before treating the due as paid.";
+      return "The payment app did not return a final payment status.";
   }
 }
 
@@ -293,6 +370,14 @@ export default function DuesPage({
   const [paymentError, setPaymentError] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<{ dueId: string; status: UpiPaymentStatus } | null>(null);
   const [paymentLaunching, setPaymentLaunching] = useState(false);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState("");
+  const [paymentProofUploading, setPaymentProofUploading] = useState(false);
+  const [paymentProofError, setPaymentProofError] = useState("");
+  const [paymentQrDataUrl, setPaymentQrDataUrl] = useState("");
+  const [paymentQrError, setPaymentQrError] = useState("");
+  const [clearingDueId, setClearingDueId] = useState<string | null>(null);
+  const [clearDueError, setClearDueError] = useState("");
   const [deleteConfirmDue, setDeleteConfirmDue] = useState<DueRecord | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
@@ -356,12 +441,44 @@ export default function DuesPage({
 
   useEffect(() => () => onLoadingChange(false), [onLoadingChange]);
 
-  const visibleDues = useMemo(() => {
-    const selected = dues.filter((due) => {
+  const selectedPaymentUri = selectedDue ? upiPaymentUri(selectedDue, currency) : "";
+
+  useEffect(() => {
+    let active = true;
+    setPaymentQrDataUrl("");
+    setPaymentQrError("");
+    if (!selectedPaymentUri) return () => { active = false; };
+    void QRCode.toDataURL(selectedPaymentUri, { errorCorrectionLevel: "M", margin: 2, width: 280 })
+      .then((dataUrl) => {
+        if (active) setPaymentQrDataUrl(dataUrl);
+      })
+      .catch((caught: unknown) => {
+        if (active) setPaymentQrError(parseError(caught, "Couldn’t generate a UPI QR code."));
+      });
+    return () => { active = false; };
+  }, [selectedPaymentUri]);
+
+  useEffect(() => {
+    setPaymentProofFile(null);
+    setPaymentProofError("");
+  }, [selectedDue?.id]);
+
+  useEffect(() => {
+    if (!paymentProofFile) {
+      setPaymentProofPreview("");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(paymentProofFile);
+    setPaymentProofPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [paymentProofFile]);
+
+  const categoryDues = useMemo(() => dues.filter((due) => {
       if (activeCategory === "all") return true;
       return template !== null && categoryFor(due, template)?.id === activeCategory;
-    });
-    return selected.sort((left, right) => {
+    }), [activeCategory, dues, template]);
+
+  const sortedDues = useMemo(() => categoryDues.slice().sort((left, right) => {
       const leftDate = getDateValue(left, template?.fields ?? []);
       const rightDate = getDateValue(right, template?.fields ?? []);
       const leftDelta = daysFromToday(leftDate);
@@ -371,8 +488,9 @@ export default function DuesPage({
       if (leftOverdue !== rightOverdue) return leftOverdue ? -1 : 1;
       if (leftOverdue && rightOverdue) return rightDelta - leftDelta || left.id.localeCompare(right.id);
       return leftDelta - rightDelta || left.id.localeCompare(right.id);
-    });
-  }, [activeCategory, dues, template]);
+    }), [categoryDues, template]);
+  const visibleDues = useMemo(() => sortedDues.filter((due) => !isCompletedDue(due)), [sortedDues]);
+  const completedDues = useMemo(() => sortedDues.filter(isCompletedDue), [sortedDues]);
 
   const filteredContacts = useMemo(() => {
     const query = contactSearch.trim().toLowerCase();
@@ -467,6 +585,11 @@ export default function DuesPage({
       reminderDaysBefore: values.reminderDaysBefore.map(Number),
       payeeName: values.payeeName.trim() || null,
       payeeUpiId: values.payeeUpiId.trim() || null,
+      ...(normalizePhoneNumber(values.payeePhoneNumber) || getText(
+        dues.find((due) => due.id === editingId)?.values.payeePhoneNumber,
+      )
+        ? { payeePhoneNumber: normalizePhoneNumber(values.payeePhoneNumber) || null }
+        : {}),
       reference: values.reference.trim() || null,
       autoPay: values.autoPay,
       status: values.status,
@@ -531,6 +654,70 @@ export default function DuesPage({
     }
   }
 
+  async function markDueCompleted(due: DueRecord) {
+    if (!userId || !template) return false;
+    if (!template.statuses.includes("COMPLETED")) {
+      setClearDueError("Your due API does not allow the COMPLETED status yet.");
+      return false;
+    }
+    setClearingDueId(due.id);
+    setClearDueError("");
+    try {
+      const response = await apiFetch(
+        `/api/v1/user/${encodeURIComponent(userId)}/dues/${encodeURIComponent(due.id)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dueUpdatePayload(due, currency, "COMPLETED")),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`Couldn’t clear this due (server returned ${response.status}).`);
+      }
+      const completedDue = { ...due, values: { ...due.values, status: "COMPLETED" } };
+      setDues((current) => current.map((item) => item.id === due.id ? completedDue : item));
+      setSelectedDue((current) => current?.id === due.id ? completedDue : current);
+      await loadData(false);
+      return true;
+    } catch (caught) {
+      setClearDueError(parseError(caught, "We couldn’t clear this due. Please try again."));
+      return false;
+    } finally {
+      setClearingDueId(null);
+    }
+  }
+
+  async function uploadPaymentProof(due: DueRecord) {
+    if (!paymentProofFile) {
+      setPaymentProofError("Choose a payment screenshot first.");
+      return;
+    }
+    if (!/^image\/(png|jpeg|webp)$/.test(paymentProofFile.type) || paymentProofFile.size > 10 * 1024 * 1024) {
+      setPaymentProofError("Choose a PNG, JPEG, or WebP image up to 10 MB.");
+      return;
+    }
+    setPaymentProofUploading(true);
+    setPaymentProofError("");
+    try {
+      const proof = await submitDuePaymentProof(apiFetch, userId, due.id, paymentProofFile);
+      const updatedDue = {
+        ...due,
+        values: {
+          ...due.values,
+          paymentProofStatus: proof.status,
+          paymentProofSubmittedAt: proof.submittedAt,
+        },
+      };
+      setDues((current) => current.map((item) => item.id === due.id ? updatedDue : item));
+      setSelectedDue(updatedDue);
+      setPaymentProofFile(null);
+    } catch (caught) {
+      setPaymentProofError(parseError(caught, "We couldn’t submit this screenshot. You can retry later."));
+    } finally {
+      setPaymentProofUploading(false);
+    }
+  }
+
   async function enableContacts() {
     setContactsLoading(true);
     setContactsError("");
@@ -549,10 +736,12 @@ export default function DuesPage({
     if (!template || !values) return;
     setSelectedContactId(contact.id);
     updateField("payeeName", contact.name);
+    updateField("payeePhoneNumber", contact.phoneNumber);
   }
 
   async function payDue(due: DueRecord) {
     setPaymentError("");
+    setClearDueError("");
     setPaymentStatus(null);
     const unavailableReason = upiPaymentUnavailableReason(due, currency);
     if (unavailableReason) {
@@ -562,7 +751,8 @@ export default function DuesPage({
     setPaymentLaunching(true);
     try {
       const result = await openUpiPayment({
-        payeeUpiId: getText(due.values.payeeUpiId).trim(),
+        payeeUpiId: getText(due.values.payeeUpiId).trim() || undefined,
+        payeePhoneNumber: normalizePhoneNumber(getText(due.values.payeePhoneNumber)) || undefined,
         payeeName: getText(due.values.payeeName).trim(),
         amount: Number(due.values.amount).toFixed(2),
         note: getText(due.values.title).trim() || "FinanceFlow due",
@@ -575,7 +765,7 @@ export default function DuesPage({
     }
   }
 
-  const dueCountLabel = `${dues.length} ${dues.length === 1 ? "reminder" : "reminders"}`;
+  const dueCountLabel = `${visibleDues.length} active · ${completedDues.length} cleared`;
 
   return (
     <section className="dashboard-subpage dues-page" aria-labelledby="dues-title">
@@ -619,7 +809,7 @@ export default function DuesPage({
                   onClick={() => setActiveCategory("all")}
                   role="tab"
                   type="button"
-                >Everything <span>{dues.length}</span></button>
+                >Everything <span>{categoryDues.length}</span></button>
                 {template.categories.map((category) => (
                   <button
                     aria-selected={activeCategory === category.id}
@@ -630,7 +820,7 @@ export default function DuesPage({
                     type="button"
                   >
                     {category.label}
-                    <span>{dues.filter((due) => categoryFor(due, template)?.id === category.id).length}</span>
+                    <span>{categoryDues.filter((due) => categoryFor(due, template)?.id === category.id).length}</span>
                   </button>
                 ))}
               </div>
@@ -685,6 +875,13 @@ export default function DuesPage({
                       <span className="due-card-title-row">
                         <strong>{title}</strong>
                         <span className={`due-date-line is-${dateInfo.tone}`}>
+                          {getDateValue(due, template?.fields ?? []) && (
+                            <span
+                              aria-label={`Deadline ${deadlineTone(getDateValue(due, template?.fields ?? []))}`}
+                              className={`due-deadline-dot is-${deadlineTone(getDateValue(due, template?.fields ?? []))}`}
+                              title={`${deadlineTone(getDateValue(due, template?.fields ?? []))} deadline`}
+                            />
+                          )}
                           <DetailIcon name="calendar" /><span>{dateInfo.label}</span>
                         </span>
                       </span>
@@ -705,12 +902,47 @@ export default function DuesPage({
           ) : (
             <div className="dues-empty">
               <span className="dues-empty-icon"><DetailIcon name="calendar" /></span>
-              <h2>{dues.length ? "Nothing in this category yet." : "A little more peace of mind starts here."}</h2>
-              <p>{dues.length ? "Choose another category or add a reminder here." : "Add a subscription, a loan repayment, or money you’re waiting to get back."}</p>
+              <h2>{completedDues.length ? "All caught up here." : dues.length ? "Nothing in this category yet." : "A little more peace of mind starts here."}</h2>
+              <p>{completedDues.length ? "Your cleared reminders are listed below." : dues.length ? "Choose another category or add a reminder here." : "Add a subscription, a loan repayment, or money you’re waiting to get back."}</p>
               <button className="dues-add-button" disabled={!template} onClick={() => openForm()} type="button">
                 <DetailIcon name="plus" /> Add your first due
               </button>
             </div>
+          )}
+
+          {completedDues.length > 0 && (
+            <section className="dues-completed-section" aria-labelledby="dues-completed-title">
+              <div className="dues-list-heading">
+                <div>
+                  <p className="dues-list-eyebrow"><DetailIcon name="calendar" /> Closed reminders</p>
+                  <h2 id="dues-completed-title">Cleared dues</h2>
+                </div>
+                <span>{completedDues.length} cleared</span>
+              </div>
+              <div className="dues-completed-list">
+                {completedDues.map((due) => {
+                  const title = getText(due.values.title) || "Due reminder";
+                  const amount = Number(due.values.amount);
+                  return (
+                    <button
+                      className="dues-completed-item"
+                      key={due.id}
+                      onClick={() => setSelectedDue(due)}
+                      type="button"
+                    >
+                      <span>
+                        <strong>{title}</strong>
+                        <small>{getText(due.values.payeeName) || formatDueDate(getText(due.values.dueDate))}</small>
+                      </span>
+                      <span className="dues-completed-amount">
+                        {Number.isFinite(amount) && amount > 0 ? formatCurrency(amount, currency) : ""}
+                        <small>COMPLETED</small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           )}
         </>
       )}
@@ -739,6 +971,13 @@ export default function DuesPage({
               <button aria-label="Close" onClick={() => setSelectedDue(null)} type="button">×</button>
             </div>
             <div className={`due-detail-date is-${dueIdentity(selectedDue, template.fields).tone}`}>
+              {getDateValue(selectedDue, template.fields) && (
+                <span
+                  aria-label={`Deadline ${deadlineTone(getDateValue(selectedDue, template.fields))}`}
+                  className={`due-deadline-dot is-${deadlineTone(getDateValue(selectedDue, template.fields))}`}
+                  title={`${deadlineTone(getDateValue(selectedDue, template.fields))} deadline`}
+                />
+              )}
               <DetailIcon name="calendar" />
               <span>{dueIdentity(selectedDue, template.fields).label}</span>
               <strong>{frequencyLabel(selectedDue)}</strong>
@@ -746,6 +985,7 @@ export default function DuesPage({
             <div className="due-detail-grid">
               <div><span>Amount</span><strong>{formatCurrency(Number(selectedDue.values.amount) || 0, currency)}</strong></div>
               <div><span>Payee</span><strong>{getText(selectedDue.values.payeeName) || "Not specified"}</strong></div>
+              {getText(selectedDue.values.payeePhoneNumber) && <div><span>Phone number</span><strong>{getText(selectedDue.values.payeePhoneNumber)}</strong></div>}
               {getText(selectedDue.values.description) && <div className="is-wide"><span>Note</span><strong>{getText(selectedDue.values.description)}</strong></div>}
               {getText(selectedDue.values.reference) && <div><span>Reference</span><strong>{getText(selectedDue.values.reference)}</strong></div>}
               <div><span>Remind me</span><strong>
@@ -756,15 +996,31 @@ export default function DuesPage({
               <div><span>Payment</span><strong>{selectedDue.values.autoPay === true ? "Auto-pay" : "Manual"}</strong></div>
               <div><span>Status</span><strong>{getText(selectedDue.values.status) || "ACTIVE"}</strong></div>
             </div>
-            {Capacitor.getPlatform() === "android" && (
+            {!isCompletedDue(selectedDue) && (
               <div className="dues-payment-action">
-                <button
-                  className="dues-submit-button"
-                  disabled={paymentLaunching || Boolean(upiPaymentUnavailableReason(selectedDue, currency))}
-                  onClick={() => void payDue(selectedDue)}
-                  type="button"
-                >{paymentLaunching ? "Opening payment app…" : "Pay with UPI"}</button>
-                <span>Verify the recipient and review the amount before confirming in your chosen UPI app.</span>
+                {Capacitor.getPlatform() === "android" && (
+                  <>
+                    <button
+                      className="dues-submit-button"
+                      disabled={paymentLaunching || Boolean(upiPaymentUnavailableReason(selectedDue, currency))}
+                      onClick={() => void payDue(selectedDue)}
+                      type="button"
+                    >{paymentLaunching ? "Opening payment app…" : "Pay with UPI"}</button>
+                    {getText(selectedDue.values.payeePhoneNumber) && !getText(selectedDue.values.payeeUpiId) && (
+                      <span>The selected UPI app will try to resolve this phone number.</span>
+                    )}
+                  </>
+                )}
+                {Capacitor.getPlatform() !== "android" && selectedPaymentUri && (
+                  <section className="dues-payment-qr" aria-label="UPI payment QR code">
+                    <strong>Scan to pay with UPI</strong>
+                    {paymentQrDataUrl
+                      ? <img alt="UPI payment QR code" height="220" src={paymentQrDataUrl} width="220" />
+                      : <span>{paymentQrError || "Preparing your QR code…"}</span>}
+                    <small>Check the recipient and amount in your UPI app before approving.</small>
+                    <a className="dues-open-upi-link" href={selectedPaymentUri}>Open UPI app on this device</a>
+                  </section>
+                )}
                 {paymentError && <p className="dues-form-error" role="alert">{paymentError}</p>}
                 {paymentStatus?.dueId === selectedDue.id && (
                   <p className="dues-payment-result" role="status">
@@ -774,6 +1030,58 @@ export default function DuesPage({
                 {!paymentError && upiPaymentUnavailableReason(selectedDue, currency) && (
                   <p className="dues-payment-hint">{upiPaymentUnavailableReason(selectedDue, currency)}</p>
                 )}
+                {getText(selectedDue.values.paymentProofStatus) === "PENDING_REVIEW" ? (
+                  <p className="dues-payment-result" role="status">
+                    Payment screenshot submitted for review
+                    {getText(selectedDue.values.paymentProofSubmittedAt)
+                      ? ` · ${formatDueDate(getText(selectedDue.values.paymentProofSubmittedAt))}`
+                      : ""}
+                  </p>
+                ) : (
+                  <div className="dues-payment-proof">
+                    <label className="dues-field">
+                      <span>Payment screenshot <small>optional</small></span>
+                      <input
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(event) => {
+                          setPaymentProofFile(event.target.files?.[0] ?? null);
+                          setPaymentProofError("");
+                        }}
+                        type="file"
+                      />
+                    </label>
+                    {paymentProofPreview && (
+                      <img
+                        alt="Selected payment screenshot preview"
+                        className="dues-payment-proof-preview"
+                        src={paymentProofPreview}
+                      />
+                    )}
+                    <small>Screenshot proof is not payment verification. It stays pending until reviewed; it never clears the due automatically.</small>
+                    <button
+                      className="dues-mark-complete-button"
+                      disabled={!paymentProofFile || paymentProofUploading}
+                      onClick={() => void uploadPaymentProof(selectedDue)}
+                      type="button"
+                    >{paymentProofUploading ? "Submitting screenshot…" : "Submit screenshot for review"}</button>
+                    {paymentProofFile && (
+                      <button
+                        className="dues-proof-retry-later"
+                        disabled={paymentProofUploading}
+                        onClick={() => setPaymentProofFile(null)}
+                        type="button"
+                      >Retry later</button>
+                    )}
+                    {paymentProofError && <p className="dues-form-error" role="alert">{paymentProofError}</p>}
+                  </div>
+                )}
+                <button
+                  className="dues-mark-complete-button"
+                  disabled={clearingDueId === selectedDue.id}
+                  onClick={() => void markDueCompleted(selectedDue)}
+                  type="button"
+                >{clearingDueId === selectedDue.id ? "Clearing…" : "Mark cleared after recipient confirms"}</button>
+                {clearDueError && <p className="dues-form-error" role="alert">{clearDueError}</p>}
               </div>
             )}
             <div className="dues-form-actions">
@@ -897,20 +1205,33 @@ export default function DuesPage({
                       value={values.payeeName}
                     />
                   </label>
-                  {Capacitor.getPlatform() === "android" && (
-                    <label className="dues-field">
-                      <span>UPI ID <small>optional</small></span>
-                      <input
-                        autoCapitalize="none"
-                        autoComplete="off"
-                        inputMode="email"
-                        maxLength={255}
-                        onChange={(event) => updateField("payeeUpiId", event.target.value)}
-                        placeholder="name@bank"
-                        value={values.payeeUpiId}
-                      />
-                      <small>Used to prefill payments in the Android UPI app chooser.</small>
-                    </label>
+                  {(
+                    <>
+                      <label className="dues-field">
+                        <span>Recipient UPI ID <small>recommended for QR payments</small></span>
+                        <input
+                          autoCapitalize="none"
+                          autoComplete="off"
+                          inputMode="email"
+                          maxLength={255}
+                          onChange={(event) => updateField("payeeUpiId", event.target.value)}
+                          placeholder="recipient@bank"
+                          value={values.payeeUpiId}
+                        />
+                      </label>
+                      <label className="dues-field">
+                        <span>Recipient phone number <small>optional</small></span>
+                        <input
+                          autoComplete="tel"
+                          inputMode="tel"
+                          maxLength={32}
+                          onChange={(event) => updateField("payeePhoneNumber", event.target.value)}
+                          placeholder="+91 98765 43210"
+                          type="tel"
+                          value={values.payeePhoneNumber}
+                        />
+                      </label>
+                    </>
                   )}
                   <label className="dues-field">
                     <span>Reference <small>optional</small></span>
@@ -993,7 +1314,7 @@ export default function DuesPage({
                 <div className="dues-contact-panel">
                   {!contactsEnabled ? (
                     <>
-                      <div className="dues-contact-copy"><DetailIcon name="contact" /><span><strong>Fill from your contacts</strong><small>Only enabled when you choose. Contacts stay on this device.</small></span></div>
+                      <div className="dues-contact-copy"><DetailIcon name="contact" /><span><strong>Fill from your contacts</strong><small>Only enabled when you choose. The selected name and number are saved with this reminder.</small></span></div>
                       <button className="dues-contact-enable" disabled={contactsLoading} onClick={() => void enableContacts()} type="button">
                         {contactsLoading ? "Requesting access…" : "Allow contact access"}
                       </button>
